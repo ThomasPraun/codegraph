@@ -83,7 +83,7 @@ below it.
 - Aim for **200 lines**. Past that, ask whether a subtree deserves its own file
   before cutting anything worth keeping.
 - Say it in as few tokens as the idea survives. Dense beats long.
-- Never edit between `@map` markers — that block is generated.
+- Never edit between `@codegraph` markers — that block is generated.
 - After changing code, the gate says which files the change moved the ground
   under. Re-read those, fix what stopped being true, and **offer** to record
   them reviewed.

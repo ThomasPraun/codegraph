@@ -12,8 +12,7 @@
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
-import { walk, readFile, languagesFor, isProbablyText, OUT_DIR, ignoreEpipe } from './lib/scan.mjs'
+import { walk, readFile, languagesFor, isProbablyText, OUT_DIR, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { parseFile } from './lib/parse.mjs'
 
 // A name this short carries no information: it collides with everything and
@@ -252,4 +251,4 @@ function main() {
   )
 }
 
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+if (isMain(import.meta.url)) main()

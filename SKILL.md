@@ -99,7 +99,7 @@ the change made untrue.
 ```bash
 node scripts/query.mjs gaps --root <repo>          # exported, no comment, most-used first
 node scripts/twins.mjs --root <repo>               # duplicate candidates
-node scripts/write-maps.mjs --root <repo> --write  # regenerate the @map blocks
+node scripts/write-maps.mjs --root <repo> --write  # regenerate the @codegraph blocks
 node scripts/check.mjs --root <repo> --check       # the gate (CI)
 ```
 
@@ -169,7 +169,7 @@ is a design decision, and a tool that takes it unasked is one nobody runs twice.
 
 Read `references/writing-doc-files.md` before creating or editing any
 `CLAUDE.md` / `AGENTS.md`. It covers what earns a file, what belongs in one,
-budgets, and where the `@map` markers go.
+budgets, and where the `@codegraph` markers go.
 
 Setting up a repo for the first time: write its root file from
 `references/root-template.md`, then add sub-files only where a directory earns
@@ -178,7 +178,7 @@ one.
 A doc file is an **operating manual for its directory** — how to work there,
 the house rules, what will bite — in two halves under opposite rules.
 
-**Between the `@map` markers**, generated: the child files worth opening, what
+**Between the `@codegraph` markers**, generated: the child files worth opening, what
 lives in this directory ranked two ways, and the backlinks. It may describe the
 code because it is derived and the gate proves it fresh — but it names what each
 thing *is*, never how anything *works*.

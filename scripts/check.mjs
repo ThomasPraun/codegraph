@@ -17,8 +17,7 @@ import {
 } from './lib/docs.mjs'
 import { renderMaps, scopeFingerprints, readFreshness } from './write-maps.mjs'
 import { tryLoad, outDirFor } from './lib/graph.mjs'
-import { ignoreEpipe } from './lib/scan.mjs'
-import { pathToFileURL } from 'node:url'
+import { ignoreEpipe, isMain } from './lib/scan.mjs'
 
 // A target, not a wall. Past it the answer is almost never "delete a sentence":
 // it is "this directory is carrying two subjects, split it". Only past
@@ -66,7 +65,7 @@ function loadHaystack(root) {
 function stripped(body) {
   return body
     .replace(/```[\s\S]*?```/g, '')       // fenced code is illustration, not citation
-    .replace(/<!--\s*@map:start[\s\S]*?@map:end\s*-->/g, '') // generated, not authored
+    .replace(/<!--\s*@codegraph:start[\s\S]*?@codegraph:end\s*-->/g, '') // generated, not authored
 }
 
 /**
@@ -161,7 +160,7 @@ export function run(root) {
     }
 
     const next = splice(d.text, blocks.get(d.path))
-    if (next === null) add(d.path, 'no @map markers — place them by hand, then run write-maps.mjs --write')
+    if (next === null) add(d.path, 'no @codegraph markers — place them by hand, then run write-maps.mjs --write')
     else if (next !== d.text) add(d.path, 'generated block is stale — run write-maps.mjs --write')
 
     const print = prints.get(d.path)
@@ -248,6 +247,5 @@ function main() {
   if (strict) process.exit(1)
 }
 
-// Only run as a command. An unguarded main() turns `import` into a side
-// effect, and argv[1] is undefined under `node -e` and the REPL.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+// Only run as a command: an unguarded main() turns `import` into a side effect.
+if (isMain(import.meta.url)) main()

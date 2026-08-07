@@ -8,9 +8,8 @@
 //   node scripts/query.mjs gaps [path]
 
 import { load, words, nameWords, overlap, capped, NOT_PROOF, stalenessLine } from './lib/graph.mjs'
-import { languagesFor, ignoreEpipe } from './lib/scan.mjs'
+import { languagesFor, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
-import { pathToFileURL } from 'node:url'
 import { join, dirname } from 'node:path'
 
 // The path this run was invoked with, so printed commands are copy-pasteable
@@ -193,6 +192,5 @@ function main() {
   process.stdout.write(`${out}\n`)
 }
 
-// Only run as a command. An unguarded main() turns `import` into a side
-// effect, and argv[1] is undefined under `node -e` and the REPL.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+// Only run as a command: an unguarded main() turns `import` into a side effect.
+if (isMain(import.meta.url)) main()

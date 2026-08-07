@@ -16,9 +16,8 @@
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { load, words, overlap, capped, outDirFor, stalenessLine } from './lib/graph.mjs'
-import { languagesFor, ignoreEpipe } from './lib/scan.mjs'
+import { languagesFor, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
-import { pathToFileURL } from 'node:url'
 
 // Thresholds start high on purpose. Five real pairs beat forty candidates: a
 // noisy detector is a disabled detector.
@@ -240,6 +239,5 @@ function main() {
   )
 }
 
-// Only run as a command. An unguarded main() turns `import` into a side
-// effect, and argv[1] is undefined under `node -e` and the REPL.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+// Only run as a command: an unguarded main() turns `import` into a side effect.
+if (isMain(import.meta.url)) main()

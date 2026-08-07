@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Generates the block inside each doc file's @map markers.
+// Generates the block inside each doc file's @codegraph markers.
 //
 //   node scripts/write-maps.mjs [--root .]           show what would change
 //   node scripts/write-maps.mjs --write              apply it
@@ -16,12 +16,11 @@
 
 import { writeFileSync, readFileSync, mkdirSync } from 'node:fs'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
 import {
   findDocFiles, readDoc, classify, splice, pathExists, MARK_START, MARK_END,
 } from './lib/docs.mjs'
 import { tryLoad, outDirFor } from './lib/graph.mjs'
-import { hash, ignoreEpipe } from './lib/scan.mjs'
+import { hash, ignoreEpipe, isMain } from './lib/scan.mjs'
 
 // The orientation list is generated, so it cannot drift, and it sits inside the
 // block that `bodyLineCount` excludes, so it costs no budget. What it does cost
@@ -303,7 +302,7 @@ function main() {
     out.push('All generated blocks are up to date.')
   }
   if (noMarkers.length) {
-    out.push('', 'No @map markers — place them by hand, once, where the block belongs:')
+    out.push('', 'No @codegraph markers — place them by hand, once, where the block belongs:')
     for (const n of noMarkers) out.push(`  ${n}`)
     out.push('', MARK_START, MARK_END)
   }
@@ -311,4 +310,4 @@ function main() {
 }
 
 // check.mjs imports renderMaps from here; only run as a command.
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()
+if (isMain(import.meta.url)) main()

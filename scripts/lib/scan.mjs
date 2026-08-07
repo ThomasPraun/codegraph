@@ -2,9 +2,9 @@
 // dependency may be added to this skill; it has to run in a repo that has
 // installed nothing.
 
-import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs'
+import { readdirSync, statSync, readFileSync, existsSync, realpathSync } from 'node:fs'
 import { join, relative, sep, dirname } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 // Directories that are never source. Kept as a list rather than read from
 // .gitignore alone, because a repo that ignores nothing still should not be
@@ -220,6 +220,33 @@ export function ignoreEpipe() {
     if (e.code === 'EPIPE') process.exit(0)
     throw e
   })
+}
+
+/**
+ * Whether this module is the script being run, rather than one being imported.
+ * Every main is guarded by it: unguarded, importing `write-maps.mjs` makes the
+ * gate rewrite files as a side effect of checking them.
+ *
+ * Comparing `import.meta.url` to `process.argv[1]` directly is the obvious
+ * version and it is wrong through a symlink. Node resolves `import.meta.url`
+ * to the real path while `argv[1]` keeps the link, so the guard never matches
+ * and the command exits 0 having done nothing — no output, no error, nothing
+ * that looks broken. Skills are almost always installed as a link into
+ * `~/.claude/skills`, so that is the normal case, not the exotic one.
+ *
+ * Both comparisons are needed: `--preserve-symlinks-main` turns the resolution
+ * off, and then only the unresolved one matches. `argv[1]` is undefined under
+ * `node -e` and the REPL, where nothing is the main module.
+ */
+export function isMain(metaUrl) {
+  const argv = process.argv[1]
+  if (!argv) return false
+  if (metaUrl === pathToFileURL(argv).href) return true
+  try {
+    return metaUrl === pathToFileURL(realpathSync(argv)).href
+  } catch {
+    return false // argv[1] is not a path we can resolve; not the main module
+  }
 }
 
 /** Cheap, stable, dependency-free. Only ever compared for equality. */
