@@ -12,7 +12,7 @@
 // one with no question attached, and it has to answer something.
 
 import {
-  load, tryLoad, words, nameWords, overlap, capped, NOT_PROOF, stalenessLine, staleness, outDirFor,
+  load, tryLoad, words, nameWords, overlap, coverage, capped, NOT_PROOF, stalenessLine, staleness, outDirFor,
 } from './lib/graph.mjs'
 import { languagesFor, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
@@ -26,6 +26,12 @@ import { join, dirname } from 'node:path'
 const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
 
 const TWIN_HINT = 0.6
+
+// A third of the query's words have to appear. Scored by coverage this is a
+// real bar — a two-word query needs one of them, a four-word query two — where
+// against the old symmetric score it was mostly a test of how short the
+// comment was.
+const MATCH_FLOOR = 0.3
 
 const FLAGS_WITH_VALUE = new Set(['--root', '--limit'])
 
@@ -65,16 +71,23 @@ export function find(g, query, limit) {
   const scored = []
 
   for (const s of g.index.symbols) {
-    const byDesc = overlap(q, words(s.desc))
-    const byName = overlap(q, nameWords(s.name))
+    const desc = words(s.desc)
+    const byDesc = coverage(q, desc)
+    const byName = coverage(q, nameWords(s.name))
     // The path is the weakest evidence and the only one a repo has before
     // anyone writes a comment — `src/checkout/totals.ts` answers "checkout
     // total" when the symbol is called `compute` and carries no description.
-    const byPath = overlap(q, nameWords(s.file.replace(/\.[^./]+$/, '').replace(/\//g, ' ')))
+    const byPath = coverage(q, nameWords(s.file.replace(/\.[^./]+$/, '').replace(/\//g, ' ')))
     const score = Math.max(byDesc, byName * 0.9, byPath * 0.6)
-    if (score > 0.15) scored.push({ s, score })
+    // Coverage alone ties a thirty-word comment containing both query words
+    // with a three-word one that is exactly them. `focus` breaks that toward
+    // the precise one without ever being able to push a match under the
+    // threshold — being found is the property that matters, ranking second.
+    const focus = Math.max(overlap(q, desc), overlap(q, nameWords(s.name)))
+    if (score > MATCH_FLOOR) scored.push({ s, score, focus })
   }
-  scored.sort((a, b) => b.score - a.score || g.usageCount(b.s) - g.usageCount(a.s))
+  scored.sort((a, b) =>
+    b.score - a.score || b.focus - a.focus || g.usageCount(b.s) - g.usageCount(a.s))
 
   if (!scored.length) {
     return `Nothing matched "${query}".\n${NOT_PROOF}\nTry fewer words, or the name you would have given it.`

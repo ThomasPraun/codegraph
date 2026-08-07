@@ -111,17 +111,17 @@ is for, and why a new language needs a case there in the same change.
 
 <!-- @codegraph:start — generated. Do not edit. -->
 
-**What lives here** — 56 exported symbols across 9 files.
+**What lives here** — 57 exported symbols across 9 files.
 
 *Most depended on — changing one of these reaches furthest:*
 
 - `OUT_DIR` · `scripts/lib/scan.mjs` — The one directory this skill writes into a project, and the only trace it leaves. Named after the skill so it… (8 uses)
+- `ignoreEpipe` · `scripts/lib/scan.mjs` — Stop a closed pipe from becoming a stack trace. `| head`, `| less` and every pager close stdout mid-write; un… (6 uses)
 - `languagesFor` · `scripts/lib/scan.mjs` — The language table for one repo: the shipped one, with any entry in `<root>/codegraph/languages.json` replaci… (6 uses)
 - `extract` · `scripts/extract.mjs` — Builds and writes the whole index. Affects: every command, and the gate's ability to check citations at all. (5 uses)
-- `ignoreEpipe` · `scripts/lib/scan.mjs` — Stop a closed pipe from becoming a stack trace. `| head`, `| less` and every pager close stdout mid-write; un… (5 uses)
 - `isMain` · `scripts/lib/scan.mjs` — Whether this module is the script being run, rather than one being imported. Every main is guarded by it: ung… (5 uses)
 - `outDirFor` · `scripts/lib/graph.mjs` — Where every artefact lives. Changing this orphans existing indexes. (4 uses)
-- …and 34 more
+- …and 35 more
 
 *No other file references these — each is a way in, a helper used only inside its own file, or dead. The index cannot tell which:*
 

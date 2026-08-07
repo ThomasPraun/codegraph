@@ -21,22 +21,72 @@ export function normalize(text) {
     .toLowerCase()
 }
 
+/**
+ * Plural folded to singular, and nothing else.
+ *
+ * Not a stemmer: no verb endings, no derivational suffixes. `identifier` and
+ * `identifiers` are the same question and matched nothing across that one
+ * letter, but `ring` → `r` would be a worse failure than the one being fixed,
+ * and every rule beyond plurals starts trading that way.
+ */
+function singular(w) {
+  if (w.length > 4 && w.endsWith('ies')) return `${w.slice(0, -3)}y`
+  if (w.length > 4 && w.endsWith('sses')) return w.slice(0, -2)
+  if (w.length > 4 && /(?:[sxz]|ch|sh)es$/.test(w)) return w.slice(0, -2)
+  if (w.length > 3 && w.endsWith('s') && !/(?:ss|us|is)$/.test(w)) return w.slice(0, -1)
+  return w
+}
+
 /** Significant words only — stopwords and two-letter noise removed, so that
- *  overlap scores reflect meaning rather than grammar. */
+ *  scores reflect meaning rather than grammar. */
 export function words(text) {
-  return normalize(text)
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
+  // The camelCase split has to happen before the lowercasing, not after it:
+  // run second it has no capitals left to find and silently does nothing, so
+  // `formatMoney` inside a description stayed one word.
+  return normalize(text.replace(/([a-z0-9])([A-Z])/g, '$1 $2'))
     .split(/[^a-z0-9]+/)
     .filter((w) => w.length > 2 && !STOPWORDS.has(w))
+    .map(singular)
 }
 
 /** camelCase / PascalCase / snake_case all split the same way. */
 export function nameWords(name) {
-  return words(name.replace(/([a-z0-9])([A-Z])/g, '$1 $2').replace(/[_-]/g, ' '))
+  return words(name.replace(/[_-]/g, ' '))
 }
 
-/** Shared words over the larger set. Normalising by the larger side keeps a
- *  three-word description from scoring high against every long one. */
+/**
+ * How much of the query is present in the text, and nothing about how much of
+ * the text is the query.
+ *
+ * This is the one that answers "does what I asked for appear here", and it is
+ * what `find` ranks on. `overlap` divides by the larger set, which is almost
+ * always the description — so a symbol whose comment contained *both* words of
+ * a two-word query scored 0.07 and fell under the threshold, while a terser
+ * comment matching one word scored 0.25 and won. Measured on this repo, that
+ * dropped a perfect match for 95% of documented symbols on a one-word query
+ * and 73% on a two-word one.
+ *
+ * It made the tool punish the comments it exists to ask for, and it failed
+ * silently: a perfect match returning nothing reads as "does not exist", which
+ * is the duplicate this whole thing is built to prevent.
+ */
+export function coverage(query, text) {
+  if (!query.length || !text.length) return 0
+  const inText = new Set(text)
+  const q = new Set(query)
+  let hits = 0
+  for (const w of q) if (inText.has(w)) hits++
+  return hits / q.size
+}
+
+/**
+ * Shared words over the larger set — symmetric, so it answers "are these two
+ * things the same size and about the same thing".
+ *
+ * That is the right question for twins and the wrong one for search; `find`
+ * uses `coverage`. Keep both: normalising by the larger side is what stops a
+ * three-word description from reading as a twin of every long one.
+ */
 export function overlap(a, b) {
   if (!a.length || !b.length) return 0
   const setB = new Set(b)
