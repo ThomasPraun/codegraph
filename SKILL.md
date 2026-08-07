@@ -33,6 +33,33 @@ here as everywhere else. Build the index first if there is none, then run it.
 Offer the `Next` lines; do not run them unasked. If the user names a task
 instead, skip this and go to the matching workflow below.
 
+## Invoked with a flag
+
+| Typed | Run | |
+|---|---|---|
+| `/codegraph` | `query.mjs status` | where the repo stands |
+| `/codegraph --index` | `extract.mjs <repo>` | rebuild; the flag **is** the ask |
+| `/codegraph --gaps [dir]` | `query.mjs gaps [dir]` | exported, uncommented, most-used first |
+| `/codegraph --twins` | `twins.mjs` | duplicate candidates with no verdict |
+| `/codegraph --check` | `check.mjs` | the gate |
+| `/codegraph --docs` | `write-maps.mjs --write` | regenerate the generated blocks |
+| `/codegraph --reviewed` | `write-maps.mjs --reviewed` | record that the doc files were re-read |
+| `/codegraph --help` | — | print this table |
+
+Say what you ran and show the output. `--index`, `--docs` and `--reviewed`
+write: name the files afterwards.
+
+**There is deliberately no `--find`, `--ripples` or `--who`.** Those take a
+subject in prose, and prose is the better interface for them — "does something
+already validate a session token?" lets the words be rephrased and the results
+read, which is the whole job. A flag would only strip that. The flags cover the
+**acts**, where the point is to get exactly one thing done with no
+interpretation at all; the **questions** stay in words.
+
+These are the skill's surface, not the scripts'. The scripts keep their own
+grammar — `query.mjs gaps`, no dashes — and this table is the mapping. An
+unrecognised flag is an error there, never a quiet fallback to `status`.
+
 ## Build the index first
 
 Nothing works without it. It is incremental — the first run costs, later runs

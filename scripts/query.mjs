@@ -29,6 +29,14 @@ const TWIN_HINT = 0.6
 
 const FLAGS_WITH_VALUE = new Set(['--root', '--limit'])
 
+// The only flags this command takes. Anything else is a command someone wrote
+// with dashes — `--gaps` — and without this list it falls through to the empty
+// case and silently answers with `status`, which looks like a working tool
+// answering the wrong question.
+const KNOWN_FLAGS = new Set(['root', 'limit'])
+
+const USAGE = 'usage: query.mjs <status|find|who|ripples|gaps> [subject] [--root .] [--limit N]'
+
 function parseArgs(argv) {
   const flags = {}
   const positional = []
@@ -307,6 +315,18 @@ function main() {
 
   const byExt = languagesFor(root).byExt
 
+  const unknown = Object.keys(flags).filter((f) => !KNOWN_FLAGS.has(f))
+  if (unknown.length) {
+    // Never fall through to status: someone who typed `--gaps` asked for gaps,
+    // and an answer to a different question is worse than an error.
+    process.stderr.write(
+      `Unknown flag(s): ${unknown.map((f) => `--${f}`).join(', ')}\n` +
+        `Commands take no dashes: ${unknown.map((f) => `query.mjs ${f}`).join(', ')}\n` +
+        `${USAGE}\n`
+    )
+    process.exit(2)
+  }
+
   // Before `load`, which exits when there is no index. Having none is a state
   // status exists to report, so it must never be a state status dies on.
   if (!cmd || cmd === 'status') {
@@ -325,7 +345,7 @@ function main() {
     case 'ripples': out = ripples(g, subject || '', limit); break
     case 'gaps': out = gaps(g, subject || '', limit); break
     default:
-      process.stderr.write('usage: query.mjs <status|find|who|ripples|gaps> [subject] [--root .] [--limit N]\n')
+      process.stderr.write(`Unknown command "${cmd}".\n${USAGE}\n`)
       process.exit(2)
   }
   process.stdout.write(`${out}\n`)

@@ -52,6 +52,21 @@ test('the bare invocation is status, not a usage error', () => {
   }
 })
 
+test('a command written with dashes is an error, never a quiet status', () => {
+  const dir = repo()
+  try {
+    // Adding status made "no command" meaningful, which turned every unknown
+    // flag into one: `--gaps` fell through and answered with status, exit 0.
+    // Someone who asked for gaps got a different question answered.
+    assert.throws(
+      () => execFileSync('node', [QUERY, '--gaps', '--root', dir], { encoding: 'utf8', stdio: 'pipe' }),
+      (e) => e.status === 2 && /Unknown flag/.test(String(e.stderr))
+    )
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
 test('it names the worst directory, not just a total', () => {
   const dir = repo()
   try {
