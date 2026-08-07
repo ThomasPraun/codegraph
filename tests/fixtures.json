@@ -1,0 +1,122 @@
+{
+  "cases": [
+    {
+      "lang": "ts",
+      "path": "src/money.ts",
+      "src": "\n/** Formats an amount. */\nexport function formatMoney(n) { return `$${n}` }\nexport const RATE = 5\nexport class Wallet {}\nfunction notExported() {}\n",
+      "expected": [
+        "RATE",
+        "Wallet",
+        "formatMoney"
+      ]
+    },
+    {
+      "lang": "dart",
+      "path": "lib/money.dart",
+      "src": "\n/// A wallet.\nclass Wallet {}\n\n/// Formats an amount.\nString formatMoney(int n) { return '$n'; }\n\nclass _Private {}\n",
+      "expected": [
+        "Wallet",
+        "formatMoney"
+      ]
+    },
+    {
+      "lang": "python",
+      "path": "src/money.py",
+      "src": "\ndef format_money(amount):\n    \"\"\"Formats an amount.\"\"\"\n    return amount\n\nclass Wallet:\n    \"\"\"Holds a balance.\"\"\"\n    def deposit(self, n):\n        pass\n\ndef _private(x):\n    \"\"\"Skipped.\"\"\"\n    return x\n",
+      "expected": [
+        "Wallet",
+        "format_money"
+      ]
+    },
+    {
+      "lang": "go",
+      "path": "app/report.go",
+      "src": "\npackage app\n\n// FormatTotal renders a total.\nfunc FormatTotal(n int) string { return \"\" }\n\n// Row is one line.\ntype Row struct{ Label string }\n\nfunc unexported() {}\n",
+      "expected": [
+        "FormatTotal",
+        "Row"
+      ]
+    },
+    {
+      "lang": "rust",
+      "path": "src/lib.rs",
+      "src": "\n/// Converts cents.\npub fn format_cents(n: u64) -> String { String::new() }\n\n/// A ledger entry.\npub struct Entry { pub id: u64 }\n\nfn hidden() {}\n",
+      "expected": [
+        "Entry",
+        "format_cents"
+      ]
+    },
+    {
+      "lang": "java",
+      "path": "src/Invoice.java",
+      "src": "\n/** A service. */\nclass OrderService {\n    /** Totals every line. */\n    int total(int[] xs) {\n        int sum = 0;\n        if (xs == null) { return 0; }\n        for (int x : xs) { sum += x; }\n        while (sum > 100) { sum--; }\n        try { doThing(); } catch (Exception e) { }\n        return sum;\n    }\n    private void secret() {}\n    /** The name. */\n    public String name() { return \"x\"; }\n}\n",
+      "expected": [
+        "OrderService",
+        "name",
+        "total"
+      ]
+    },
+    {
+      "lang": "kotlin",
+      "path": "src/UserRepo.kt",
+      "src": "\n/** A repository. */\ninternal class UserRepo {\n    /** Finds one. */\n    fun find(id: Int): String {\n        if (id < 0) return \"\"\n        for (i in 1..3) { println(i) }\n        return \"x\"\n    }\n    private fun secret() {}\n}\n",
+      "expected": [
+        "UserRepo",
+        "find"
+      ]
+    },
+    {
+      "lang": "swift",
+      "path": "Sources/Wallet.swift",
+      "src": "\n/// The checkout screen.\nstruct CheckoutView: View {\n    /// Total of the cart.\n    func total() -> Int {\n        if items.isEmpty { return 0 }\n        for item in items { sum += item.price }\n        return sum\n    }\n    private func secret() {}\n}\n\n/// A wallet.\npublic final class Wallet {\n    /// Adds funds.\n    func deposit(_ n: Int) {}\n}\n\nfileprivate struct Hidden {}\n",
+      "expected": [
+        "CheckoutView",
+        "Wallet",
+        "deposit",
+        "total"
+      ]
+    },
+    {
+      "lang": "php",
+      "path": "src/Invoice.php",
+      "src": "<?php\n/** An invoice. */\nclass Invoice {\n    /** Totals every line. */\n    public function total() { return 0; }\n}\n",
+      "expected": [
+        "Invoice",
+        "total"
+      ]
+    },
+    {
+      "lang": "csharp",
+      "path": "src/Invoice.cs",
+      "src": "\n/// A service.\ninternal class OrderService {\n    private int hidden;\n}\n\n/// One line.\npublic record Line(int Amount);\n",
+      "expected": [
+        "Line",
+        "OrderService"
+      ]
+    },
+    {
+      "lang": "ruby",
+      "path": "app/checkout.rb",
+      "src": "\n# Runs a checkout.\nclass Checkout\n  # Charges the card.\n  def charge(amount)\n    amount * 2\n  end\nend\n",
+      "expected": [
+        "Checkout",
+        "charge"
+      ]
+    },
+    {
+      "lang": "astro",
+      "path": "src/Checkout.astro",
+      "src": "---\n// The checkout screen.\nexport const title = 'Checkout'\n---\n<div>hi</div>\n",
+      "expected": [
+        "Checkout",
+        "title"
+      ]
+    }
+  ],
+  "snippets": {
+    "pythonDoc": "\ndef format_money(amount):\n    \"\"\"Formats an amount with its currency symbol.\"\"\"\n    return amount\n",
+    "blankLineBreaks": "\n// Documents something else.\n\nexport function thing() {}\n",
+    "bracedBody": "export function f() { if (x) { return 1 } }",
+    "noBody": "# X\ndef charge(n)\n  n\nend\n"
+  }
+}

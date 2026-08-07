@@ -15,12 +15,20 @@ import { join } from 'node:path'
 import {
   findDocFiles, readDoc, classify, splice, bodyLineCount, pathExists, conventionOf,
 } from './lib/docs.mjs'
-import { renderMaps } from './write-maps.mjs'
+import { renderMaps, scopeFingerprints, readFreshness } from './write-maps.mjs'
+import { tryLoad, outDirFor } from './lib/graph.mjs'
+import { ignoreEpipe } from './lib/scan.mjs'
+import { pathToFileURL } from 'node:url'
 
+// A target, not a wall. Past it the answer is almost never "delete a sentence":
+// it is "this directory is carrying two subjects, split it". Only past
+// HARD_MULTIPLE does the file stop being readable at all, and only then does it
+// fail — a gate that fires on 201 lines teaches people to raise the number.
 const DEFAULT_BUDGET = 200
+const HARD_MULTIPLE = 1.5
 
 function loadBudgets(root) {
-  const p = join(root, 'docs-graph', 'budgets.json')
+  const p = join(outDirFor(root), 'budgets.json')
   if (!existsSync(p)) return {}
   try {
     return JSON.parse(readFileSync(p, 'utf8'))
@@ -29,19 +37,30 @@ function loadBudgets(root) {
   }
 }
 
-/** Every identifier the repo contains, from the extractor's cache. This is the
- *  haystack a citation has to be found in. */
+/**
+ * Every identifier the repo contains — the haystack a citation has to be found
+ * in. `index.json` is read first because it is the committed half; `.cache.json`
+ * is a fallback for an index written before `idents` was carried there.
+ */
 function loadHaystack(root) {
-  const p = join(root, 'docs-graph', '.cache.json')
-  if (!existsSync(p)) return null
-  try {
-    const files = JSON.parse(readFileSync(p, 'utf8')).files || {}
-    const all = new Set()
-    for (const f of Object.values(files)) for (const id of f.idents || []) all.add(id)
-    return all
-  } catch {
-    return null
+  const read = (name) => {
+    const p = join(outDirFor(root), name)
+    if (!existsSync(p)) return null
+    try {
+      return JSON.parse(readFileSync(p, 'utf8'))
+    } catch {
+      return null
+    }
   }
+
+  const index = read('index.json')
+  if (index?.idents?.length) return new Set(index.idents)
+
+  const cache = read('.cache.json')
+  if (!cache) return null
+  const all = new Set()
+  for (const f of Object.values(cache.files || {})) for (const id of f.idents || []) all.add(id)
+  return all.size ? all : null
 }
 
 function stripped(body) {
@@ -81,6 +100,12 @@ function allowlist(text) {
 export function run(root) {
   const findings = []
   const add = (file, msg) => findings.push({ file, msg })
+  // Findings fail the build; notes never do. A note is something only a person
+  // can settle — whether prose that describes moved code is still true. Making
+  // it fail would put the gate in the business of judging meaning, and force
+  // people to clear it by editing nothing.
+  const notes = []
+  const note = (file, msg) => notes.push({ file, msg })
 
   const convention = conventionOf(root)
   if (convention.mixed) {
@@ -88,11 +113,24 @@ export function run(root) {
   }
 
   const docs = classify(findDocFiles(root).map((p) => readDoc(root, p)))
-  if (!docs.length) return { findings, docs: [] }
+  if (!docs.length) return { findings, notes, docs: [] }
 
   const budgets = loadBudgets(root)
   const haystack = loadHaystack(root)
-  const blocks = renderMaps(docs, root)
+  // A gate that could not run a check must never report Green. Silence here is
+  // indistinguishable from a pass, and CI reads the exit code, not the prose.
+  if (!haystack) {
+    add('.', 'no indexed identifiers — run extract.mjs; symbol citations were NOT checked')
+  }
+  // Same `g` as write-maps.mjs passes, or the block renders differently here
+  // and every file reads as permanently stale.
+  const g = tryLoad(root)
+  const blocks = renderMaps(docs, root, g)
+
+  // The code a doc file speaks for, against the fingerprint taken the last time
+  // someone reviewed it. Says the ground moved; never says the prose is wrong.
+  const prints = scopeFingerprints(docs, g)
+  const baseline = readFreshness(root)
 
   for (const d of docs) {
     for (const p of d.problems) add(d.path, p)
@@ -126,37 +164,71 @@ export function run(root) {
     if (next === null) add(d.path, 'no @map markers — place them by hand, then run write-maps.mjs --write')
     else if (next !== d.text) add(d.path, 'generated block is stale — run write-maps.mjs --write')
 
+    const print = prints.get(d.path)
+    if (print && baseline[d.path] === undefined) {
+      note(d.path, 'never reviewed against its scope — run write-maps.mjs --reviewed to set the baseline')
+    } else if (print && baseline[d.path] !== print) {
+      note(d.path, `the code under "${d.dir}" changed since this file was last reviewed` +
+        ' — re-read it, fix what stopped being true, then write-maps.mjs --reviewed')
+    }
+
     const budget = budgets[d.path] ?? DEFAULT_BUDGET
     const count = bodyLineCount(d.body)
-    if (count > budget) {
-      add(d.path, `${count} body lines, budget ${budget} — cut prose, do not raise the budget`)
+    if (count > budget * HARD_MULTIPLE) {
+      add(d.path, `${count} written lines against a ${budget} target — too long to stay read.` +
+        ' Split a subtree into its own file, or say it in fewer words. Never raise the target')
+    } else if (count > budget) {
+      note(d.path, `${count} written lines against a ${budget} target — worth asking whether a` +
+        ' subtree deserves its own file, or whether this says something twice')
     }
   }
 
-  return { findings, docs, haystack: !!haystack }
+  return { findings, notes, docs, haystack: !!haystack }
 }
 
 function main() {
+  ignoreEpipe()
   const argv = process.argv.slice(2)
   const rootIdx = argv.indexOf('--root')
   const root = rootIdx >= 0 ? argv[rootIdx + 1] : '.'
   const strict = argv.includes('--check')
 
-  const { findings, docs, haystack } = run(root)
+  const { findings, notes, docs } = run(root)
 
   if (!docs.length) {
     process.stdout.write('No CLAUDE.md or AGENTS.md files found. Nothing to check.\n')
     return
   }
-  if (!haystack) {
-    process.stdout.write('No docs-graph/.cache.json — symbol citations were not checked.\n' +
-      'Run extract.mjs first to enable that check.\n\n')
+  // The budget counts what a human wrote; a reader loads the whole file, and
+  // every ancestor of it. Left unsaid, the gate reports 72/200 while working in
+  // that directory costs 128 lines, and the generated half reads as free when
+  // it is only exempt from the budget.
+  const lines = (t) => t.split('\n').filter((l) => l.trim()).length
+  const byDir = new Map(docs.map((d) => [d.dir, d]))
+  let worst = { chain: 0, path: '' }
+  for (const d of docs) {
+    let total = 0
+    for (let cur = d; cur; cur = cur.parent ? byDir.get(cur.parent) : null) total += lines(cur.text)
+    if (total > worst.chain) worst = { chain: total, path: d.path }
   }
+  const written = docs.reduce((n, d) => n + bodyLineCount(d.body), 0)
+  const generated = docs.reduce((n, d) => n + lines(d.text) - bodyLineCount(d.body), 0)
+  const cost =
+    `${docs.length} doc file(s) · ${written} written, ${generated} generated\n` +
+    `Deepest chain a reader loads: ${worst.chain} lines (${worst.path} and its ancestors)\n`
+
+  const asNotes = notes.length
+    ? [`${notes.length} note(s) — yours to judge, they do not fail the build:`, '']
+        .concat(notes.map((n) => `  · ${n.file}: ${n.msg}`))
+        .concat('')
+        .join('\n')
+    : ''
 
   if (!findings.length) {
-    process.stdout.write(`${docs.length} doc file(s) checked. Green.\n`)
+    process.stdout.write(`${cost}${asNotes}Green.\n`)
     return
   }
+  process.stdout.write(`${cost}${asNotes}`)
 
   const byFile = new Map()
   for (const f of findings) {
@@ -176,4 +248,6 @@ function main() {
   if (strict) process.exit(1)
 }
 
-main()
+// Only run as a command. An unguarded main() turns `import` into a side
+// effect, and argv[1] is undefined under `node -e` and the REPL.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

@@ -1,0 +1,9 @@
+# codegraph — derived from the code, rebuilt on demand, never a source of truth.
+# Committing these makes a 3000-line diff out of every code change, and CI
+# rebuilds them in under a second anyway.
+codegraph/index.json
+codegraph/.cache.json
+
+# Kept in git on purpose: twins.json and freshness.json record human verdicts,
+# languages.json is hand-written config. Losing them means judging twice and
+# re-reviewing every doc file on every machine.

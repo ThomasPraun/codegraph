@@ -14,12 +14,19 @@
 // (noise, and it gets switched off) or seals a verdict that ages into a lie.
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
-import { load, words, overlap, capped, outDirFor } from './lib/graph.mjs'
+import { join, dirname } from 'node:path'
+import { load, words, overlap, capped, outDirFor, stalenessLine } from './lib/graph.mjs'
+import { languagesFor, ignoreEpipe } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
+import { pathToFileURL } from 'node:url'
 
 // Thresholds start high on purpose. Five real pairs beat forty candidates: a
 // noisy detector is a disabled detector.
+// The path this run was invoked with, so printed commands are copy-pasteable
+// from wherever the skill is installed. `scripts/...` is only right while
+// codegraph is the repo being indexed.
+const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
+
 const SHAPE_MIN = 0.55
 const DESC_MIN = 0.5
 const MIN_TOKENS = 12
@@ -45,8 +52,16 @@ function saveVerdicts(outDir, store) {
   writeFileSync(join(outDir, 'twins.json'), `${JSON.stringify(store, null, 2)}\n`)
 }
 
-/** Inverted index so pairing stays linear-ish instead of comparing everything
- *  to everything: only symbols that share a feature are ever compared. */
+/**
+ * Inverted index so pairing stays linear-ish instead of comparing everything to
+ * everything: only symbols that share a feature are ever compared.
+ *
+ * Reports what it skipped, and that reporting is not decoration. A feature
+ * shared by more than `AMBIENT_BUCKET` symbols is boilerplate rather than a
+ * duplicate — but the failure mode inverts: the more copy-paste a repo has, the
+ * more buckets go ambient, and a repo drowning in duplication is the one this
+ * would go quietest about. Silent, that reads as "no duplicates".
+ */
 function pairsSharing(symbols, featuresOf) {
   const buckets = new Map()
   symbols.forEach((s, i) => {
@@ -57,8 +72,12 @@ function pairsSharing(symbols, featuresOf) {
   })
   const seen = new Set()
   const out = []
+  const skipped = new Set()
   for (const idxs of buckets.values()) {
-    if (idxs.length > AMBIENT_BUCKET) continue
+    if (idxs.length > AMBIENT_BUCKET) {
+      for (const i of idxs) skipped.add(i)
+      continue
+    }
     for (let a = 0; a < idxs.length; a++) {
       for (let b = a + 1; b < idxs.length; b++) {
         const k = `${idxs[a]}:${idxs[b]}`
@@ -68,6 +87,9 @@ function pairsSharing(symbols, featuresOf) {
       }
     }
   }
+  // Only symbols that landed in no comparable bucket at all are truly unseen.
+  for (const [i, j] of out) { skipped.delete(i); skipped.delete(j) }
+  out.skipped = new Set([...skipped].map((i) => symbols[i]))
   return out
 }
 
@@ -95,21 +117,26 @@ export function candidates(index) {
 
   // Route 1 — shape. Strip names and literals, compare what is left.
   const shaped = symbols.filter((s) => s.tokenCount >= MIN_TOKENS && s.sketch?.length)
-  for (const [i, j] of pairsSharing(shaped, (s) => s.sketch)) {
+  const shapePairs = pairsSharing(shaped, (s) => s.sketch)
+  for (const [i, j] of shapePairs) {
     const score = sketchSimilarity(shaped[i].sketch, shaped[j].sketch)
     if (score >= SHAPE_MIN) add(globalIdx.get(shaped[i]), globalIdx.get(shaped[j]), 'shape', score)
   }
 
   // Route 2 — description. Finds the twin whose code looks nothing alike.
   const described = symbols.filter((s) => words(s.desc).length >= 3)
-  for (const [i, j] of pairsSharing(described, (s) => words(s.desc))) {
+  const descPairs = pairsSharing(described, (s) => words(s.desc))
+  for (const [i, j] of descPairs) {
     const score = overlap(words(described[i].desc), words(described[j].desc))
     if (score >= DESC_MIN) {
       add(globalIdx.get(described[i]), globalIdx.get(described[j]), 'description', score)
     }
   }
 
-  return [...found.values()].sort((x, y) => y.score - x.score)
+  const pairs = [...found.values()].sort((x, y) => y.score - x.score)
+  // A union, never a sum: a symbol ambient on both routes is one symbol.
+  pairs.skippedAsAmbient = new Set([...shapePairs.skipped, ...descPairs.skipped]).size
+  return pairs
 }
 
 function isSettled(store, pair) {
@@ -153,6 +180,7 @@ function record(root, file) {
 }
 
 function main() {
+  ignoreEpipe()
   const argv = process.argv.slice(2)
   const val = (f) => {
     const i = argv.indexOf(f)
@@ -167,6 +195,7 @@ function main() {
   }
 
   const { index } = load(root)
+  process.stdout.write(stalenessLine(root, languagesFor(root).byExt))
   const store = loadVerdicts(outDirFor(root))
   const all = candidates(index)
   const showAll = argv.includes('--all')
@@ -174,12 +203,24 @@ function main() {
   const settled = all.length - open.length
   const limit = Number(val('--limit') || 10)
 
+  // Never printed as a footnote to a clean result: on a repo where one shape
+  // repeats past AMBIENT_BUCKET, this is the whole answer, and "no candidates"
+  // without it is the tool going quiet exactly where it should be loudest.
+  const ambient = all.skippedAsAmbient
+    ? `${all.skippedAsAmbient} symbol(s) were never compared: their shape or wording is shared by more\n` +
+      `than ${AMBIENT_BUCKET} others, which reads as boilerplate rather than as duplication. If this\n` +
+      `repo is heavily copy-pasted, that is the reason for a thin result, not an absence of\n` +
+      `twins. Index one subtree on its own to bring the buckets back under the threshold:\n` +
+      `  ${here('extract.mjs')} <subdir> && ${here('twins.mjs')} --root <subdir>\n`
+    : ''
+
   if (!open.length) {
     process.stdout.write(
-      `No open twin candidates${settled ? ` (${settled} already judged)` : ''}.\n`
+      `No open twin candidates${settled ? ` (${settled} already judged)` : ''}.\n${ambient}`
     )
     return
   }
+  if (ambient) process.stdout.write(`${ambient}\n`)
 
   process.stdout.write(
     [
@@ -189,7 +230,7 @@ function main() {
       capped(open, limit, render),
       '',
       'These are candidates, not findings. Judge each pair, then persist the answer:',
-      '  node scripts/twins.mjs --record verdicts.json',
+      `  ${here('twins.mjs')} --record verdicts.json`,
       'so that a pair ruled "different" is never raised again unless a body changes.',
       '',
       'verdicts.json: [{ "a": {"name","file","bodyHash"}, "b": {…},',
@@ -199,4 +240,6 @@ function main() {
   )
 }
 
-main()
+// Only run as a command. An unguarded main() turns `import` into a side
+// effect, and argv[1] is undefined under `node -e` and the REPL.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

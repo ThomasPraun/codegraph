@@ -5,7 +5,7 @@ import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, relative, sep, dirname } from 'node:path'
 
 const DOC_NAMES = ['CLAUDE.md', 'AGENTS.md']
-const SKIP = new Set(['node_modules', '.git', 'dist', 'build', 'docs-graph', 'graphify-out', '.dart_tool'])
+const SKIP = new Set(['node_modules', '.git', 'dist', 'build', 'codegraph', 'docs-graph', 'graphify-out', '.dart_tool'])
 
 /** The marker pair. Hand-placed once per file; the generator only ever writes
  *  between them, and refuses to act when they are absent. */

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// The lens. Reads docs-graph/index.json and answers one question at a time,
+// The lens. Reads codegraph/index.json and answers one question at a time,
 // always against a cap.
 //
 //   node scripts/query.mjs find "formatear moneda" [--root .] [--limit 8]
@@ -7,8 +7,16 @@
 //   node scripts/query.mjs ripples src/utils/money.ts
 //   node scripts/query.mjs gaps [path]
 
-import { load, words, nameWords, overlap, capped, NOT_PROOF } from './lib/graph.mjs'
+import { load, words, nameWords, overlap, capped, NOT_PROOF, stalenessLine } from './lib/graph.mjs'
+import { languagesFor, ignoreEpipe } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
+import { pathToFileURL } from 'node:url'
+import { join, dirname } from 'node:path'
+
+// The path this run was invoked with, so printed commands are copy-pasteable
+// from wherever the skill is installed. `scripts/...` is only right while
+// codegraph is the repo being indexed.
+const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
 
 const TWIN_HINT = 0.6
 
@@ -35,14 +43,20 @@ function label(s) {
 
 // --------------------------------------------------------------------- find
 
-function find(g, query, limit) {
+/** Symbols whose description, name or path overlap the query, best first.
+ *  Exported so its ranking can be tested; the CLI is the only other caller. */
+export function find(g, query, limit) {
   const q = words(query)
   const scored = []
 
   for (const s of g.index.symbols) {
     const byDesc = overlap(q, words(s.desc))
     const byName = overlap(q, nameWords(s.name))
-    const score = Math.max(byDesc, byName * 0.9)
+    // The path is the weakest evidence and the only one a repo has before
+    // anyone writes a comment — `src/checkout/totals.ts` answers "checkout
+    // total" when the symbol is called `compute` and carries no description.
+    const byPath = overlap(q, nameWords(s.file.replace(/\.[^./]+$/, '').replace(/\//g, ' ')))
+    const score = Math.max(byDesc, byName * 0.9, byPath * 0.6)
     if (score > 0.15) scored.push({ s, score })
   }
   scored.sort((a, b) => b.score - a.score || g.usageCount(b.s) - g.usageCount(a.s))
@@ -122,7 +136,7 @@ function ripples(g, target, limit) {
     capped(rows, Number(limit), ([file, via]) => `  ${file}\n      via ${via.join(', ')}`),
     '',
     'Doc files whose scope covers those paths must be re-read before shipping:',
-    '  node scripts/check.mjs --report',
+    `  ${here('check.mjs')}`,
     '',
     NOT_PROOF,
   ].join('\n')
@@ -156,12 +170,16 @@ function gaps(g, path, limit) {
 // ---------------------------------------------------------------------- cli
 
 function main() {
+  ignoreEpipe()
   const { flags, positional } = parseArgs(process.argv.slice(2))
   const [cmd, subject] = positional
   const root = flags.root || '.'
   const limit = flags.limit || (cmd === 'gaps' ? '15' : '8')
 
   const g = load(root)
+  // Before the answer, never after: a reader who has the result already has
+  // stopped reading.
+  process.stdout.write(stalenessLine(root, languagesFor(root).byExt))
   let out
   switch (cmd) {
     case 'find': out = find(g, subject || '', limit); break
@@ -175,4 +193,6 @@ function main() {
   process.stdout.write(`${out}\n`)
 }
 
-main()
+// Only run as a command. An unguarded main() turns `import` into a side
+// effect, and argv[1] is undefined under `node -e` and the REPL.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) main()

@@ -1,8 +1,10 @@
-// Tree walking and file reading. Node builtins only — no dependency may be
-// added to this skill; it has to run in a repo that has installed nothing.
+// Tree walking, file reading and the language table. Node builtins only — no
+// dependency may be added to this skill; it has to run in a repo that has
+// installed nothing.
 
 import { readdirSync, statSync, readFileSync, existsSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { join, relative, sep, dirname } from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 // Directories that are never source. Kept as a list rather than read from
 // .gitignore alone, because a repo that ignores nothing still should not be
@@ -12,19 +14,104 @@ const ALWAYS_SKIP = new Set([
   'dist', 'build', 'out', 'coverage', 'tmp',
   '.next', '.nuxt', '.astro', '.svelte-kit', '.turbo', '.cache',
   '.dart_tool', 'Pods', '.gradle', '.idea', '.vscode',
-  '.venv', 'venv', '__pycache__', 'vendor',
-  'docs-graph', 'graphify-out',
+  '.venv', 'venv', '__pycache__', 'vendor', 'target',
+  'codegraph', 'docs-graph', 'graphify-out',
 ])
+
+/** The one directory this skill writes into a project, and the only trace it
+ *  leaves. Named after the skill so it is obvious what created it and safe to
+ *  delete. Changing this orphans every existing index. */
+export const OUT_DIR = 'codegraph'
 
 const MAX_FILE_BYTES = 1_000_000
 
-/** Which extensions are indexed at all. Adding one here is step 1 of adding a
- *  language; see references/languages.md for the other two. */
-export const LANG_BY_EXT = {
-  '.ts': 'ts', '.tsx': 'ts', '.mts': 'ts', '.cts': 'ts',
-  '.js': 'ts', '.jsx': 'ts', '.mjs': 'ts', '.cjs': 'ts',
-  '.dart': 'dart',
-  '.astro': 'astro',
+// A tier-0 file contributes identifiers with no comment syntax to strip them
+// by, so junk costs more there than a missed edge. The cap is tighter than for
+// a known language on purpose.
+const MAX_TIER0_BYTES = 200_000
+
+/**
+ * Extensions never indexed, at any tier. Prose and data are the reason: a
+ * README that says "run this first" would make every file naming `run` look
+ * like a caller, and that count reorders the gaps list.
+ */
+export const NEVER_INDEXED = new Set([
+  '.md', '.mdx', '.markdown', '.txt', '.rst', '.adoc',
+  '.json', '.jsonc', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.env',
+  '.csv', '.tsv', '.xml', '.plist', '.lock', '.sum',
+  '.png', '.jpg', '.jpeg', '.gif', '.svg', '.webp', '.ico', '.bmp',
+  '.pdf', '.zip', '.gz', '.tar', '.jar', '.war', '.class', '.o', '.a',
+  '.so', '.dylib', '.dll', '.exe', '.wasm', '.bin', '.pyc',
+  '.woff', '.woff2', '.ttf', '.otf', '.eot',
+  '.mp3', '.mp4', '.mov', '.wav', '.webm',
+  '.snap', '.map', '.min.js', '.log',
+])
+
+const HERE = dirname(fileURLToPath(import.meta.url))
+
+function readJson(path) {
+  try {
+    return JSON.parse(readFileSync(path, 'utf8'))
+  } catch {
+    return null
+  }
+}
+
+/** The built-in language table, as shipped. */
+export const BUILTIN_LANGS = readJson(join(HERE, 'languages.json')) || {}
+
+function byExtOf(langs) {
+  const map = {}
+  for (const [id, spec] of Object.entries(langs)) {
+    for (const ext of spec.exts || []) map[ext] = id
+  }
+  return map
+}
+
+/** Which extensions are indexed as a known language, in the shipped table. */
+export const LANG_BY_EXT = byExtOf(BUILTIN_LANGS)
+
+/**
+ * Languages whose patterns actually compile, and a line about each that does
+ * not. A hand-written table is the one input here that a stranger edits, so a
+ * bad regex in one entry must cost that entry and nothing else — never the run.
+ */
+function usable(langs) {
+  const ok = {}
+  const problems = []
+  for (const [id, spec] of Object.entries(langs)) {
+    if (!spec || typeof spec !== 'object' || !Array.isArray(spec.exts)) {
+      problems.push(`language "${id}" ignored: no exts array`)
+      continue
+    }
+    try {
+      for (const d of spec.decls || []) new RegExp(d.re, 'gm')
+      for (const i of spec.imports || []) new RegExp(i.re, 'gm')
+      ok[id] = spec
+    } catch (e) {
+      problems.push(`language "${id}" ignored: ${e.message}`)
+    }
+  }
+  return { ok, problems }
+}
+
+/**
+ * The language table for one repo: the shipped one, with any entry in
+ * `<root>/codegraph/languages.json` replacing or adding to it. That is the same
+ * directory the index is written to, on purpose — one folder is the whole
+ * footprint, and a second dot-prefixed twin of it would be found by nobody.
+ * Written by hand and never overwritten: nothing here generates that filename.
+ *
+ * A repo that writes a bad table loses that language, with a line saying so —
+ * never the whole index.
+ */
+export function languagesFor(root) {
+  const override = readJson(join(root, OUT_DIR, 'languages.json'))
+  const merged = override && typeof override === 'object'
+    ? { ...BUILTIN_LANGS, ...override }
+    : BUILTIN_LANGS
+  const { ok, problems } = usable(merged)
+  return { langs: ok, byExt: byExtOf(ok), problems }
 }
 
 // Only the coarse forms are honoured: a bare directory name, `name/`, and
@@ -45,14 +132,26 @@ function readIgnoreNames(root) {
   return names
 }
 
-/** The extension including its dot, or '' — the key into `LANG_BY_EXT`. */
+/** The extension including its dot, or '' — the key into the language table. */
 export function extOf(name) {
   const i = name.lastIndexOf('.')
   return i < 0 ? '' : name.slice(i)
 }
 
-/** Every source file under root, as repo-relative POSIX paths. */
-export function walk(root) {
+/**
+ * A NUL byte in the first kilobyte means binary. Cheap, and wrong only for text
+ * that nobody writes code in — the alternative is a dependency.
+ */
+export function isProbablyText(text) {
+  return !text.slice(0, 1024).includes('\0')
+}
+
+/**
+ * Every file under root worth reading, as repo-relative POSIX paths, each with
+ * the language id it was recognised as — or `null` for tier 0, a file indexed
+ * only as a source of identifiers.
+ */
+export function walk(root, byExt = LANG_BY_EXT) {
   const ignored = readIgnoreNames(root)
   const found = []
 
@@ -65,26 +164,33 @@ export function walk(root) {
     }
     for (const e of entries) {
       if (e.name.startsWith('.') && e.name !== '.') {
-        if (!LANG_BY_EXT[extOf(e.name)]) continue
+        if (!byExt[extOf(e.name)]) continue
       }
       if (ALWAYS_SKIP.has(e.name) || ignored.has(e.name)) continue
       const full = join(dir, e.name)
       if (e.isDirectory()) {
         visit(full)
-      } else if (e.isFile() && LANG_BY_EXT[extOf(e.name)]) {
-        let st
-        try {
-          st = statSync(full)
-        } catch {
-          continue
-        }
-        if (st.size > MAX_FILE_BYTES) continue
-        found.push({
-          path: relative(root, full).split(sep).join('/'),
-          size: st.size,
-          mtime: Math.floor(st.mtimeMs),
-        })
+        continue
       }
+      if (!e.isFile()) continue
+
+      const ext = extOf(e.name)
+      const lang = byExt[ext] || null
+      if (!lang && (!ext || NEVER_INDEXED.has(ext))) continue
+
+      let st
+      try {
+        st = statSync(full)
+      } catch {
+        continue
+      }
+      if (st.size > (lang ? MAX_FILE_BYTES : MAX_TIER0_BYTES)) continue
+      found.push({
+        path: relative(root, full).split(sep).join('/'),
+        size: st.size,
+        mtime: Math.floor(st.mtimeMs),
+        lang,
+      })
     }
   }
 
@@ -101,6 +207,19 @@ export function readFile(root, relPath) {
   } catch {
     return null
   }
+}
+
+/**
+ * Stop a closed pipe from becoming a stack trace. `| head`, `| less` and every
+ * pager close stdout mid-write; unhandled, that surfaces as an EPIPE crash that
+ * reads like the tool broke, and it only happens once the output outgrows the
+ * pipe buffer — so it looks intermittent too. Called first thing in every main.
+ */
+export function ignoreEpipe() {
+  process.stdout.on('error', (e) => {
+    if (e.code === 'EPIPE') process.exit(0)
+    throw e
+  })
 }
 
 /** Cheap, stable, dependency-free. Only ever compared for equality. */
