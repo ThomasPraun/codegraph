@@ -81,6 +81,7 @@ Extraction is incremental — the first run costs, later runs do not. Use
 | Command | What it does |
 |---|---|
 | `extract.mjs <repo> [--full]` | Build or refresh the index into `<repo>/codegraph/` |
+| `query.mjs status` | Where the repo stands, and the command that changes each thing that is off. Also what no command at all means |
 | `query.mjs find "<purpose>"` | Search by purpose in plain words, not by name — description, then name, then path |
 | `query.mjs who <symbol>` | Who calls this |
 | `query.mjs ripples <path\|symbol>` | What reaches into what you touched |

@@ -16,6 +16,23 @@ the ground under it moves. Both are rebuilt only when someone asks.
 All paths below are relative to this skill's directory. `<repo>` is the project
 being worked on; omit `--root` when it is the current directory.
 
+## Invoked with no task
+
+`/codegraph` on its own carries no question. Run this and show the output —
+do not stop at having built something:
+
+```bash
+node scripts/query.mjs status --root <repo>
+```
+
+It reports where the repo stands — index, drift, comments, doc files, twins —
+and ends with the commands that change whatever is not where it should be. It
+reads only: it never rebuilds the index, because that stays the owner's call
+here as everywhere else. Build the index first if there is none, then run it.
+
+Offer the `Next` lines; do not run them unasked. If the user names a task
+instead, skip this and go to the matching workflow below.
+
 ## Build the index first
 
 Nothing works without it. It is incremental — the first run costs, later runs

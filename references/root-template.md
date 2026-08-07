@@ -48,6 +48,7 @@ under a second. `twins.json`, `freshness.json` and `languages.json` are in git,
 because each holds a decision somebody made.
 
 ```bash
+node <path>/scripts/query.mjs status --root .             # where this repo stands
 node <path>/scripts/query.mjs find "<purpose>" --root .   # does this exist already?
 node <path>/scripts/query.mjs ripples <path|symbol>       # what reaches what I touched
 node <path>/scripts/query.mjs gaps [dir]                  # exported, uncommented, most-used first
