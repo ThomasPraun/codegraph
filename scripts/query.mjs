@@ -19,7 +19,7 @@ import {
 } from './lib/graph.mjs'
 import { languagesFor, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
-import { findDocFiles, readDoc, splice } from './lib/docs.mjs'
+import { SENTINEL } from './init.mjs'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 
@@ -164,9 +164,6 @@ function ripples(g, target, limit) {
     head,
     capped(rows, Number(limit), ([file, via]) => `  ${file}\n      via ${via.join(', ')}`),
     '',
-    'Doc files whose scope covers those paths must be re-read before shipping:',
-    `  ${here('check.mjs')}`,
-    '',
     NOT_PROOF,
   ].join('\n')
 }
@@ -212,19 +209,17 @@ function undocumentedByDir(g) {
   return [...byDir.entries()].sort((a, b) => b[1] - a[1])
 }
 
-/** How many doc files exist and how many have nowhere to put the block. */
-function docState(root) {
-  const paths = findDocFiles(root)
-  let unmarked = 0
-  for (const p of paths) {
+/** The doc file carrying the index rules, or null when none does. */
+function rulesInstalled(root) {
+  for (const name of ['CLAUDE.md', 'AGENTS.md']) {
+    const p = join(root, name)
     try {
-      if (splice(readDoc(root, p).text, '') === null) unmarked++
+      if (existsSync(p) && readFileSync(p, 'utf8').includes(SENTINEL)) return name
     } catch {
-      // Unreadable is not the status command's problem to report; the gate
-      // does that with a path attached.
+      // Unreadable is not this command's business to report.
     }
   }
-  return { total: paths.length, unmarked }
+  return null
 }
 
 /**
@@ -298,13 +293,12 @@ export function status(root, byExt) {
     }
   }
 
-  const docs = docState(root)
-  if (!docs.total) {
-    line('Doc files', 'none — no CLAUDE.md or AGENTS.md in this tree')
-    next.push(['read references/root-template.md, in the skill', 'the standing orders go in a root CLAUDE.md'])
-  } else {
-    line('Doc files', `${docs.total}${docs.unmarked ? ` · ${docs.unmarked} with no @codegraph markers` : ''}`)
-  }
+  // The root doc file is reported as installed-or-not and nothing more. The
+  // rules this skill writes there are fixed text, so there is no version of
+  // them to be behind and nothing here to check.
+  const rules = rulesInstalled(root)
+  line('Index rules', rules ? `installed in ${rules}` : 'not in any CLAUDE.md here')
+  if (!rules) next.push([`${here('init.mjs')} ${root}`, 'so an agent knows the index exists'])
 
   const twins = twinState(root)
   line('Twins', twins === null ? 'no verdict recorded here' : `${twins} verdict(s) recorded`)
@@ -354,16 +348,14 @@ export function orient(root) {
     '',
     '  Or name an action:',
     '',
-    '    --status        where this repo stands: drift, comments, doc files, twins',
+    '    --status        where this repo stands: drift, comments, twins',
     '    --gaps [dir]    exported and uncommented, most-used first',
     '    --twins         duplicate candidates nobody has ruled on',
     '    --index         rebuild the index — never happens unasked',
-    '    --check         the gate: citations, budgets, freshness',
-    '    --docs          regenerate the generated blocks in the doc files',
-    '    --reviewed      record that the doc files were re-read against the code',
+    '    --init          write the index rules into this repo\'s CLAUDE.md',
     '',
-    '  Directly: query.mjs <status|find|who|ripples|gaps>, twins.mjs, check.mjs,',
-    '  write-maps.mjs, extract.mjs. The flags above are the skill spelling.',
+    '  Directly: query.mjs <status|find|who|ripples|gaps>, twins.mjs,',
+    '  extract.mjs, init.mjs. The flags above are the skill spelling.',
   ].join('\n')
 }
 

@@ -19,15 +19,7 @@ import { OUT_DIR } from '../scripts/lib/scan.mjs'
 
 const REPO = new URL('../', import.meta.url).pathname
 
-const DOC = `---
-scope: .
----
-
-# Fixture
-
-<!-- @codegraph:start — generated. Do not edit. -->
-<!-- @codegraph:end -->
-`
+const DOC = '# Fixture\n\nWhatever the owner already wrote.\n'
 
 // A project, plus a symlink standing in for ~/.claude/skills/codegraph.
 function installed() {
@@ -74,10 +66,11 @@ test('importing a script is never a side effect, even with no argv[1]', () => {
     node([script('extract.mjs'), proj])
     const before = readFileSync(join(proj, 'CLAUDE.md'), 'utf8')
 
-    // `node -e` leaves process.argv[1] undefined. Unguarded, this rewrites the
-    // doc file; guarded by a bare `import.meta.url === pathToFileURL(argv[1])`
-    // it throws instead of returning false.
-    const out = node(['-e', `import(${JSON.stringify(script('write-maps.mjs'))})`], { cwd: proj })
+    // `node -e` leaves process.argv[1] undefined. Unguarded, this appends the
+    // index rules to the doc file; guarded by a bare
+    // `import.meta.url === pathToFileURL(argv[1])` it throws rather than
+    // returning false.
+    const out = node(['-e', `import(${JSON.stringify(script('init.mjs'))})`], { cwd: proj })
 
     assert.equal(out, '', 'an import must not print')
     assert.equal(readFileSync(join(proj, 'CLAUDE.md'), 'utf8'), before, 'an import must not write')

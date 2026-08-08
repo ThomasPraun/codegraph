@@ -1,6 +1,6 @@
 ---
 name: codegraph
-description: Use when adding a function, component or helper, when hunting duplicated code, or when documenting a codebase. Extracts every exported symbol with its comment and its callers into a queryable index, flags twins that do the same thing under different names, and maintains the CLAUDE.md/AGENTS.md pyramid.
+description: Use when adding a function, component or helper, when hunting duplicated code, or when documenting a codebase. Extracts every exported symbol with its comment and its callers into a queryable index, and flags twins that do the same thing under different names.
 ---
 
 # codegraph
@@ -8,10 +8,12 @@ description: Use when adding a function, component or helper, when hunting dupli
 Answers one question: **does this already exist, and if I touch it, what starts
 lying?**
 
-It answers that from the code, and it keeps a `CLAUDE.md` pyramid where a
-person answers the question the code cannot: how a subtree actually works. The
-index is derived and always true; the pyramid is written and flagged the moment
-the ground under it moves. Both are rebuilt only when someone asks.
+Everything it knows is harvested from the code, so nothing in the index can be
+out of date with the code without saying so. It is rebuilt only when someone
+asks, never on its own.
+
+It writes one fixed block of rules into the repo's root `CLAUDE.md` so an agent
+opening the repo later knows the index is there. Nothing else.
 
 All paths below are relative to this skill's directory. `<repo>` is the project
 being worked on; omit `--root` when it is the current directory.
@@ -42,13 +44,11 @@ below.
 | `/codegraph --index` | `extract.mjs <repo>` | rebuild; the flag **is** the ask |
 | `/codegraph --gaps [dir]` | `query.mjs gaps [dir]` | exported, uncommented, most-used first |
 | `/codegraph --twins` | `twins.mjs` | duplicate candidates with no verdict |
-| `/codegraph --check` | `check.mjs` | the gate |
-| `/codegraph --docs` | `write-maps.mjs --write` | regenerate the generated blocks |
-| `/codegraph --reviewed` | `write-maps.mjs --reviewed` | record that the doc files were re-read |
+| `/codegraph --init` | `init.mjs <repo>` | write the index rules into the root CLAUDE.md |
 | `/codegraph --help` | `query.mjs --help` | the orientation again |
 
-Say what you ran and show the output. `--index`, `--docs` and `--reviewed`
-write: name the files afterwards.
+Say what you ran and show the output. `--index` and `--init` write: name the
+files afterwards.
 
 `--status` is separate from the bare invocation on purpose. Someone arriving
 with no command has not asked how stale the index is — they do not yet know
@@ -85,13 +85,12 @@ codegraph/.cache.json
 
 Split by **origin, not by file type**. `index.json` is derived from the code and
 rebuilt in under a second; committed, it turns every code change into a
-three-thousand-line diff. `twins.json`, `freshness.json` and `languages.json`
-stay in git because each holds a decision a person made — a twin verdict, a doc
-reviewed, a language taught. Losing those means judging twice.
+three-thousand-line diff. `twins.json` and `languages.json` stay in git because
+each holds a decision a person made — a twin verdict, a language taught. Losing
+those means judging twice.
 
-CI therefore runs `extract` before `check`. The gate raises a finding when there
-are no indexed identifiers, so a pipeline that forgets fails loudly rather than
-passing without having checked.
+`extract` says so when those two lines are missing from a repo's `.gitignore`.
+It never edits the file: offer the lines, let the owner add them.
 
 **Never rebuild unasked.** Every command that reads the index prints a line when
 the tree has moved past it. Report that line and *offer* to rebuild; the owner
@@ -141,16 +140,13 @@ are not decoration:
   not be blanked. The name is in the text; it may not be in the code. Open the
   file before repeating it as a caller.
 
-Then re-read the doc files whose scope covers those paths, and update whatever
-the change made untrue.
+A file that reaches into what you touched is a file to open before shipping.
 
 ### When documenting a codebase
 
 ```bash
-node scripts/query.mjs gaps --root <repo>          # exported, no comment, most-used first
-node scripts/twins.mjs --root <repo>               # duplicate candidates
-node scripts/write-maps.mjs --root <repo> --write  # regenerate the @codegraph blocks
-node scripts/check.mjs --root <repo> --check       # the gate (CI)
+node scripts/query.mjs gaps --root <repo>   # exported, no comment, most-used first
+node scripts/twins.mjs --root <repo>        # duplicate candidates
 ```
 
 Work the `gaps` list from the top. A symbol twelve files import is worth twelve
@@ -176,18 +172,11 @@ detects the transition.
 a bad sweep lands in silence. Do one directory, show the diff, move on. Never
 sweep a whole repo of comments in one pass.
 
-**The gate checks form, never truth.** `check.mjs` verifies that a path
-resolves, a cited symbol exists, a generated block is fresh, a budget holds — and
-raises a *note*, never a finding, when the code under a doc file has moved. It
-must never judge whether a documented claim is still correct. A gate that can be
-wrong about meaning gets disabled within a month; a note that a person settles
-cannot be wrong about anything.
-
-**Cite symbol names, never line numbers.** The gate can verify a name. Line
-numbers rot on the next edit and nothing notices.
-
-**Never raise a budget to make the gate pass.** Past the target, split a subtree
-into its own file first, compress second, and only then accept a few lines over.
+**Never put anything generated in a doc file.** A block derived from the index
+has to be regenerated, proved fresh and re-reviewed when the code under it
+moves — three mechanisms that can each be wrong about a repo they only read.
+Fixed text needs none of them. The rules `init.mjs` writes name no symbol and
+count nothing, which is exactly why they need no upkeep.
 
 ## Judging twin candidates
 
@@ -215,56 +204,30 @@ Take `bodyHash` from `codegraph/index.json`.
 **Never merge twins unasked.** Report the pair and let the user decide — merging
 is a design decision, and a tool that takes it unasked is one nobody runs twice.
 
-## The doc pyramid
+## The root CLAUDE.md
 
-Read `references/writing-doc-files.md` before creating or editing any
-`CLAUDE.md` / `AGENTS.md`. It covers what earns a file, what belongs in one,
-budgets, and where the `@codegraph` markers go.
-
-Setting up a repo for the first time: write its root file from
-`references/root-template.md`, then add sub-files only where a directory earns
-one.
-
-A doc file is an **operating manual for its directory** — how to work there,
-the house rules, what will bite — in two halves under opposite rules.
-
-**Between the `@codegraph` markers**, generated: the child files worth opening, what
-lives in this directory ranked two ways, and the backlinks. It may describe the
-code because it is derived and the gate proves it fresh — but it names what each
-thing *is*, never how anything *works*.
-
-**Outside the markers**, written: invariants, procedures, gotchas, ripples —
-and, **in a sub-file only, how that subtree actually works**. The root never
-explains: it loads on every read in the repo, so a paragraph there is paid
-thousands of times. A sub-file is paid only by whoever works in that subtree,
-which is what makes the explanation on demand.
-
-Explanation is allowed because it no longer rots unseen. The gate fingerprints
-the symbols each file speaks for and raises a **note** when they change — *the
-ground moved*, never *this is wrong*. Notes never fail a build; only a person
-can settle them:
+The skill writes exactly one thing into a repo: a fixed block of index rules in
+the root `CLAUDE.md`, so that an agent opening the repo later knows the index
+exists and how to query it.
 
 ```bash
-node scripts/write-maps.mjs --root <repo> --reviewed   # I re-read these against the code
+node scripts/init.mjs <repo>
 ```
 
-`--reviewed` is deliberately not `--write`. Regenerating a block is mechanical
-and runs every build; declaring a file reviewed is a person saying they looked.
-Coupled, the mechanical step would clear the human signal every time.
+It appends and never rewrites — whatever else is in that file is the owner's.
+Run twice it does nothing the second time.
 
-Aim for **200 written lines**. Past it the first question is not "what do I
-delete" but **"is this directory carrying two subjects?"** — split, then
-compress, then accept a few over. Say everything in as few tokens as the idea
-survives.
+The text is fixed on purpose. It names no symbol and counts nothing, so there
+is no version of it that can be behind the code, and therefore no marker to
+keep current, no freshness record and no gate. **Nothing generated goes in a
+doc file**: the moment it does, all three come back, and each is a mechanism
+that can be wrong about a repo it only reads.
 
-`write-maps.mjs` reads the index, so run `extract.mjs` first and the gate last.
+One convention per repo — if `AGENTS.md` is already in use, that is the name;
+otherwise `CLAUDE.md`. Never both.
 
-Two more facts that change decisions and are easy to get wrong:
-
-- **Every ancestor doc file loads, not just the nearest one.** A new file
-  halfway down a tree taxes every read below it, forever.
-- **One convention per repo.** If `AGENTS.md` is already in use, use that name;
-  otherwise `CLAUDE.md`. Never both.
+Everything else in that file belongs to the owner. Offer to add what they want
+remembered every session; never reorganise what is already there.
 
 ## Languages
 

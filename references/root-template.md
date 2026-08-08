@@ -1,95 +1,83 @@
 # The root CLAUDE.md
 
-The standing orders for a repo: what an agent must know before touching
-anything, every session, without being told twice. Copy the template below into
-`<repo>/CLAUDE.md`, then cut what does not apply and add what the owner wants
-never forgotten.
+`init.mjs` writes one section into a repo's root `CLAUDE.md`: how to use the
+index. This file explains what it writes, why it is fixed, and what belongs
+around it.
 
-When setting a project up, also add to its `.gitignore` (create one if absent):
+```bash
+node scripts/init.mjs <repo>
+```
+
+It appends and never rewrites. Run twice, the second run does nothing.
+
+## What it writes
+
+A `## The index` section: the four commands, and the four rules that decide
+whether the index is worth having.
+
+- **Search by purpose, in plain words.** The duplicate has a different name —
+  that is why nobody found it. Searching by the name you were about to use
+  finds nothing and proves nothing.
+- **A thin result is a miss, not proof of absence.** The extractor matches
+  text; it does not understand code. Without this line an empty result reads
+  as permission to write the duplicate.
+- **Descriptions live above the symbol, in the code.** The index harvests
+  them. A description kept anywhere else starts true and ends fictional with
+  nothing detecting the transition.
+- **Never rebuild unasked.** An index rebuilt behind someone's back changes
+  answers they were in the middle of using.
+
+Replace `<skill>` in the written commands with the path the skill is installed
+at, so they are copy-pasteable from inside that repo.
+
+## Why the text is fixed
+
+It names no symbol, cites no path inside the repo and counts nothing. There is
+therefore no version of it that can be behind the code.
+
+That is the whole design. A block generated from the index would need a marker
+to find it, a regeneration step to refresh it, and a record of when a person
+last checked the prose around it — three mechanisms, each able to be wrong
+about a repo it only reads, and each needing to be maintained for as long as
+the repo lives. Fixed text needs none of them, and it is not obviously less
+useful: an agent that knows the index exists can query it, and querying beats
+reading an inventory that was accurate yesterday.
+
+**This is the line to hold.** The moment something generated goes back into a
+doc file, all three mechanisms come back with it.
+
+## What belongs around it
+
+Everything else in that file is the owner's:
+
+- Rules they want remembered every session — conventions, house rules, the
+  thing that bites every newcomer.
+- How the project works, where that cannot be read off the code.
+- What must stay true, and what breaks when it does not.
+
+None of that is this skill's business to write, generate or check. Offer to add
+what the owner asks for; never reorganise what is already there.
+
+Keep it short enough that nobody skims it. The root file loads on every read of
+every file in the repo, so a line here is paid thousands of times.
+
+## One convention per repo
+
+If `AGENTS.md` is already in use, that is the name; otherwise `CLAUDE.md`.
+`init.mjs` follows whichever it finds and creates `CLAUDE.md` when there is
+neither. Never both — mixing them splits the context in half, and readers load
+only one.
+
+## And the .gitignore
+
+`extract.mjs` reports these when they are missing, and never adds them itself:
 
 ```gitignore
 codegraph/index.json
 codegraph/.cache.json
 ```
 
-## What belongs here, and what does not
-
-| Root | A sub-file |
-|---|---|
-| How to use the index | What this subtree does and how it hangs together |
-| Documentation conventions, including these | Invariants and gotchas of this subtree |
-| That the pyramid exists and how it works | Procedures local to it |
-| Rules the owner wants always remembered | What a change here ripples into |
-
-**The root never explains the code.** It is loaded on every read of every file
-in the repo, so a line here is paid thousands of times. Explanation belongs in a
-sub-file, which is paid only when someone works in that subtree — that is what
-makes it on demand rather than always-on.
-
-Keep it short enough that nobody skims it. Everything below is optional except
-the index rules and the conventions.
-
-## The template
-
-````markdown
----
-scope: .
----
-
-# <project>
-
-## The index
-
-`codegraph/` holds an index of every exported symbol, its comment, and who
-uses it. It is **never rebuilt automatically** — ask before rebuilding.
-
-`index.json` and `.cache.json` are gitignored: they are derived and rebuilt in
-under a second. `twins.json`, `freshness.json` and `languages.json` are in git,
-because each holds a decision somebody made.
-
-```bash
-node <path>/scripts/query.mjs status --root .             # where this repo stands
-node <path>/scripts/query.mjs find "<purpose>" --root .   # does this exist already?
-node <path>/scripts/query.mjs ripples <path|symbol>       # what reaches what I touched
-node <path>/scripts/query.mjs gaps [dir]                  # exported, uncommented, most-used first
-node <path>/scripts/extract.mjs .                         # rebuild — only when asked
-```
-
-- Search by **purpose in plain words**, not by the name you were going to use.
-  The duplicate has a different name; that is why nobody found it.
-- **A thin result is a miss, not proof of absence.** Grep before concluding
-  something does not exist.
-- Every command warns when the index is behind the tree. Report it and **offer**
-  to rebuild. Never rebuild unasked.
-
-## Documentation
-
-- Every exported symbol carries a comment **immediately above it**, one line
-  saying what it is for. A blank line between comment and declaration breaks the
-  association.
-- The comment is the only place a description lives. Never restate it elsewhere.
-- When you touch code that has no comment, **offer to write one**. When a whole
-  directory is undocumented, offer to work through it — `gaps <dir>`, most-used
-  first, one directory at a time, showing the diff.
-
-## The CLAUDE.md pyramid
-
-Files below this one carry the context for their own subtree. **Every ancestor
-loads, not just the nearest**, so a file halfway down is paid on every read
-below it.
-
-- Read the file whose scope covers what you are about to change.
-- A directory earns a file when it holds **three or more things the code will
-  not tell you**. Below three, the facts move up to the parent.
-- Aim for **200 lines**. Past that, ask whether a subtree deserves its own file
-  before cutting anything worth keeping.
-- Say it in as few tokens as the idea survives. Dense beats long.
-- Never edit between `@codegraph` markers — that block is generated.
-- After changing code, the gate says which files the change moved the ground
-  under. Re-read those, fix what stopped being true, and **offer** to record
-  them reviewed.
-
-## Always
-
-<!-- What the owner wants remembered every session. Delete if empty. -->
-````
+Both are derived and rebuilt in under a second. Committed, they turn every
+code change into a thousand-line diff. Everything else under `codegraph/`
+holds a decision a person made — a twin verdict, a language taught — and
+belongs in git.
