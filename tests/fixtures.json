@@ -12,38 +12,97 @@
     },
     {
       "lang": "dart",
-      "path": "lib/money.dart",
-      "src": "\n/// A wallet.\nclass Wallet {}\n\n/// Formats an amount.\nString formatMoney(int n) { return '$n'; }\n\nclass _Private {}\n",
+      "path": "lib/cart.dart",
+      "src": "import 'package:flutter/material.dart';\n\nimport '../models/line_item.dart';\n\n/// A cart as the checkout screen needs it.\nclass Cart {\n  final List<LineItem> items;\n  final String _ownerId;\n\n  const Cart({required this.items, required String ownerId}) : _ownerId = ownerId;\n\n  /// The cart total in cents, discounts already applied.\n  int get totalCents {\n    var total = 0;\n    for (final item in items) {\n      if (item.isVoided) continue;\n      total += item.amountCents;\n    }\n    return total;\n  }\n\n  /// A copy with one more line.\n  Cart add(LineItem item) => Cart(items: [...items, item], ownerId: _ownerId);\n\n  int _rawTotal() => items.fold(0, (a, b) => a + b.amountCents);\n}\n\n/// Anything that can price a cart.\nabstract class Pricer {\n  int priceOf(Cart cart);\n}\n\n/// Rounding helpers shared by every price display.\nextension MoneyFormatting on int {\n  /// This many cents as the user's local currency.\n  String get asMoney => '\\$${this / 100}';\n}\n\n/// The checkout screen.\nclass CheckoutScreen extends StatelessWidget {\n  const CheckoutScreen({super.key, required this.cart});\n\n  final Cart cart;\n\n  @override\n  Widget build(BuildContext context) {\n    return Scaffold(body: Text(cart.totalCents.asMoney));\n  }\n}\n\nmixin Loggable {\n  void log(String message) => debugPrint(message);\n}\n",
       "expected": [
-        "Wallet",
-        "formatMoney"
+        "Cart",
+        "CheckoutScreen",
+        "Loggable",
+        "MoneyFormatting",
+        "Pricer",
+        "add",
+        "asMoney",
+        "build",
+        "log",
+        "totalCents"
+      ],
+      "documented": [
+        "Cart",
+        "CheckoutScreen",
+        "MoneyFormatting",
+        "Pricer",
+        "add",
+        "asMoney",
+        "totalCents"
       ]
     },
     {
       "lang": "python",
-      "path": "src/money.py",
-      "src": "\ndef format_money(amount):\n    \"\"\"Formats an amount.\"\"\"\n    return amount\n\nclass Wallet:\n    \"\"\"Holds a balance.\"\"\"\n    def deposit(self, n):\n        pass\n\ndef _private(x):\n    \"\"\"Skipped.\"\"\"\n    return x\n",
+      "path": "src/pipeline.py",
+      "src": "\"\"\"Batch pipeline for nightly report generation.\"\"\"\n\nfrom dataclasses import dataclass\nfrom typing import Iterable, Optional\nimport logging\n\nlog = logging.getLogger(__name__)\n\n\n@dataclass(frozen=True)\nclass Report:\n    \"\"\"One generated report, before it is written anywhere.\"\"\"\n\n    account_id: str\n    total_cents: int\n\n\nclass ReportPipeline:\n    \"\"\"Builds reports for a batch of accounts, skipping the ones with no activity.\"\"\"\n\n    def __init__(self, source, sink):\n        self._source = source\n        self._sink = sink\n\n    def run(self, account_ids: Iterable[str]) -> int:\n        \"\"\"Generates and writes every report. Returns how many were written.\"\"\"\n        written = 0\n        for account_id in account_ids:\n            try:\n                report = self.build(account_id)\n            except ValueError:\n                log.warning(\"skipping %s\", account_id)\n                continue\n            if report is None:\n                continue\n            self._sink.write(report)\n            written += 1\n        return written\n\n    def build(self, account_id: str) -> Optional[Report]:\n        \"\"\"The report for one account, or None when there was no activity.\"\"\"\n        rows = self._source.rows_for(account_id)\n        if not rows:\n            return None\n        return Report(account_id, sum(r.amount_cents for r in rows))\n\n    @property\n    def sink(self):\n        \"\"\"Where finished reports go.\"\"\"\n        return self._sink\n\n    @staticmethod\n    def _normalise(value: str) -> str:\n        return value.strip().lower()\n\n\nasync def schedule_nightly(pipeline: ReportPipeline) -> None:\n    \"\"\"Runs the pipeline once, at the time the scheduler decides.\"\"\"\n    while True:\n        await pipeline.run([])\n",
       "expected": [
-        "Wallet",
-        "format_money"
+        "Report",
+        "ReportPipeline",
+        "build",
+        "run",
+        "schedule_nightly",
+        "sink"
+      ],
+      "documented": [
+        "Report",
+        "ReportPipeline",
+        "build",
+        "run",
+        "schedule_nightly",
+        "sink"
       ]
     },
     {
       "lang": "go",
-      "path": "app/report.go",
-      "src": "\npackage app\n\n// FormatTotal renders a total.\nfunc FormatTotal(n int) string { return \"\" }\n\n// Row is one line.\ntype Row struct{ Label string }\n\nfunc unexported() {}\n",
+      "path": "src/store.go",
+      "src": "package storage\n\nimport (\n\t\"context\"\n\t\"errors\"\n\t\"time\"\n)\n\n// ErrNotFound is returned when the key is absent rather than empty.\nvar ErrNotFound = errors.New(\"not found\")\n\n// DefaultTTL is how long an entry survives without being touched.\nconst DefaultTTL = 5 * time.Minute\n\n// Entry is one cached value with the moment it stops being valid.\ntype Entry struct {\n\tKey       string\n\tValue     []byte\n\tExpiresAt time.Time\n}\n\n// Store reads and writes entries, and knows nothing about what is in them.\ntype Store interface {\n\tGet(ctx context.Context, key string) (*Entry, error)\n\tPut(ctx context.Context, e *Entry) error\n}\n\ntype memStore struct {\n\tentries map[string]*Entry\n}\n\n// NewMemStore returns a Store that keeps everything in process memory.\nfunc NewMemStore() Store {\n\treturn &memStore{entries: make(map[string]*Entry)}\n}\n\n// Get returns the entry, or ErrNotFound when it is missing or expired.\nfunc (s *memStore) Get(ctx context.Context, key string) (*Entry, error) {\n\te, ok := s.entries[key]\n\tif !ok {\n\t\treturn nil, ErrNotFound\n\t}\n\tfor k, v := range s.entries {\n\t\tif v.ExpiresAt.Before(time.Now()) {\n\t\t\tdelete(s.entries, k)\n\t\t}\n\t}\n\treturn e, nil\n}\n\n// Put writes the entry, replacing whatever was there.\nfunc (s *memStore) Put(ctx context.Context, e *Entry) error {\n\ts.entries[e.Key] = e\n\treturn nil\n}\n\nfunc (s *memStore) evict(key string) {\n\tdelete(s.entries, key)\n}\n",
       "expected": [
-        "FormatTotal",
-        "Row"
+        "DefaultTTL",
+        "Entry",
+        "ErrNotFound",
+        "Get",
+        "NewMemStore",
+        "Put",
+        "Store"
+      ],
+      "documented": [
+        "DefaultTTL",
+        "Entry",
+        "ErrNotFound",
+        "Get",
+        "NewMemStore",
+        "Put",
+        "Store"
       ]
     },
     {
       "lang": "rust",
-      "path": "src/lib.rs",
-      "src": "\n/// Converts cents.\npub fn format_cents(n: u64) -> String { String::new() }\n\n/// A ledger entry.\npub struct Entry { pub id: u64 }\n\nfn hidden() {}\n",
+      "path": "src/ledger.rs",
+      "src": "use std::collections::HashMap;\nuse serde::{Deserialize, Serialize};\n\nuse crate::money::Cents;\n\n/// One posting against an account.\n#[derive(Debug, Clone, Serialize, Deserialize)]\npub struct Posting {\n    pub account: String,\n    pub amount: Cents,\n}\n\n/// Everything that can go wrong posting to the ledger.\n#[derive(Debug)]\npub enum LedgerError {\n    Unbalanced { by: Cents },\n    UnknownAccount(String),\n}\n\n/// An append-only ledger, balanced after every write.\npub struct Ledger {\n    postings: Vec<Posting>,\n    balances: HashMap<String, Cents>,\n}\n\nimpl Ledger {\n    /// An empty ledger with no accounts yet.\n    pub fn new() -> Self {\n        Ledger { postings: Vec::new(), balances: HashMap::new() }\n    }\n\n    /// Appends a balanced set of postings, or refuses the whole batch.\n    pub fn post(&mut self, postings: Vec<Posting>) -> Result<(), LedgerError> {\n        let mut sum = 0;\n        for p in &postings {\n            sum += p.amount;\n        }\n        if sum != 0 {\n            return Err(LedgerError::Unbalanced { by: sum });\n        }\n        while let Some(p) = postings.iter().next() {\n            self.apply(p);\n            break;\n        }\n        Ok(())\n    }\n\n    /// The current balance of one account.\n    pub(crate) fn balance_of(&self, account: &str) -> Cents {\n        *self.balances.get(account).unwrap_or(&0)\n    }\n\n    fn apply(&mut self, posting: &Posting) {\n        *self.balances.entry(posting.account.clone()).or_insert(0) += posting.amount;\n    }\n}\n\n/// Anything that can be written to the ledger.\npub trait Postable {\n    fn to_postings(&self) -> Vec<Posting>;\n}\n\n/// Formats cents the way statements show them.\npub fn format_cents(cents: Cents) -> String {\n    format!(\"{}.{:02}\", cents / 100, cents % 100)\n}\n\nfn internal_only() -> u8 {\n    0\n}\n",
       "expected": [
-        "Entry",
-        "format_cents"
+        "Ledger",
+        "LedgerError",
+        "Postable",
+        "Posting",
+        "balance_of",
+        "format_cents",
+        "new",
+        "post"
+      ],
+      "documented": [
+        "Ledger",
+        "LedgerError",
+        "Postable",
+        "Posting",
+        "balance_of",
+        "format_cents",
+        "new",
+        "post"
       ]
     },
     {
@@ -93,13 +152,29 @@
     },
     {
       "lang": "swift",
-      "path": "Sources/Wallet.swift",
-      "src": "\n/// The checkout screen.\nstruct CheckoutView: View {\n    /// Total of the cart.\n    func total() -> Int {\n        if items.isEmpty { return 0 }\n        for item in items { sum += item.price }\n        return sum\n    }\n    private func secret() {}\n}\n\n/// A wallet.\npublic final class Wallet {\n    /// Adds funds.\n    func deposit(_ n: Int) {}\n}\n\nfileprivate struct Hidden {}\n",
+      "path": "Sources/session.swift",
+      "src": "import Foundation\nimport Combine\n\n/// A signed-in session, as the app keeps it in memory.\nstruct Session: Codable {\n    let token: String\n    let expiresAt: Date\n\n    /// Whether the token is still worth sending.\n    var isValid: Bool {\n        expiresAt > Date()\n    }\n}\n\n/// Everything that can end a session.\nenum SessionError: Error {\n    case expired\n    case revoked(reason: String)\n}\n\n/// Keeps the current session and tells everyone when it changes.\nfinal class SessionStore: ObservableObject {\n    @Published private(set) var current: Session?\n\n    private let keychain: Keychain\n    private var cancellables = Set<AnyCancellable>()\n\n    init(keychain: Keychain) {\n        self.keychain = keychain\n    }\n\n    /// Loads the stored session, or nil when there is none or it expired.\n    func restore() throws -> Session? {\n        guard let data = keychain.read(key: \"session\") else {\n            return nil\n        }\n        for attempt in 0..<3 {\n            if attempt > 0 { continue }\n        }\n        let session = try JSONDecoder().decode(Session.self, from: data)\n        guard session.isValid else {\n            throw SessionError.expired\n        }\n        return session\n    }\n\n    /// Clears the session everywhere it is kept.\n    func signOut() {\n        current = nil\n        keychain.delete(key: \"session\")\n    }\n\n    private func persist(_ session: Session) {\n        keychain.write(key: \"session\", value: Data())\n    }\n}\n\nextension Session {\n    /// How long is left before this has to be refreshed.\n    var remaining: TimeInterval { expiresAt.timeIntervalSinceNow }\n}\n\nprotocol Keychain {\n    func read(key: String) -> Data?\n}\n",
       "expected": [
-        "CheckoutView",
-        "Wallet",
-        "deposit",
-        "total"
+        "Keychain",
+        "Session",
+        "SessionError",
+        "SessionStore",
+        "expiresAt",
+        "isValid",
+        "read",
+        "remaining",
+        "restore",
+        "signOut",
+        "token"
+      ],
+      "documented": [
+        "Session",
+        "SessionError",
+        "SessionStore",
+        "isValid",
+        "remaining",
+        "restore",
+        "signOut"
       ]
     },
     {
@@ -141,11 +216,22 @@
     },
     {
       "lang": "ruby",
-      "path": "app/checkout.rb",
-      "src": "\n# Runs a checkout.\nclass Checkout\n  # Charges the card.\n  def charge(amount)\n    amount * 2\n  end\nend\n",
+      "path": "lib/invoice_mailer.rb",
+      "src": "# frozen_string_literal: true\n\nrequire \"mail\"\nrequire_relative \"invoice\"\n\nmodule Billing\n  # Sends invoices, and records that it did so the job can be retried safely.\n  class InvoiceMailer\n    ATTEMPTS = 3\n\n    attr_reader :transport\n\n    def initialize(transport, logger)\n      @transport = transport\n      @logger = logger\n    end\n\n    # Delivers one invoice. Returns false when every attempt failed.\n    def deliver(invoice)\n      ATTEMPTS.times do |attempt|\n        begin\n          @transport.send(build(invoice))\n          return true\n        rescue Net::SMTPError => e\n          @logger.warn(e.message)\n          next if attempt < ATTEMPTS - 1\n        end\n      end\n      false\n    end\n\n    # Whether this invoice has already gone out.\n    def delivered?(invoice)\n      !invoice.delivered_at.nil?\n    end\n\n    # Builds the message without sending it. Useful in previews.\n    def self.preview(invoice)\n      new(NullTransport.new, Logger.new(nil)).build(invoice)\n    end\n\n    private\n\n    def build(invoice)\n      Mail.new(to: invoice.email, subject: \"Invoice #{invoice.number}\")\n    end\n  end\nend\n",
       "expected": [
-        "Checkout",
-        "charge"
+        "Billing",
+        "InvoiceMailer",
+        "build",
+        "deliver",
+        "delivered?",
+        "initialize",
+        "preview"
+      ],
+      "documented": [
+        "InvoiceMailer",
+        "deliver",
+        "delivered?",
+        "preview"
       ]
     },
     {

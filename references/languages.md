@@ -75,6 +75,11 @@ Ruby is at tier 1 on purpose. Its blocks close with `end`, which also closes
 invent bodies rather than miss them. A missing body costs twin detection; an
 invented one corrupts it.
 
+Ruby's `private` is also a bare keyword on its own line that changes everything
+after it, rather than a marker on each declaration. Nothing that matches one
+line at a time can see that, so a method under `private` is indexed as public.
+It is in the fixture, recorded as what happens rather than hidden.
+
 Go is at tier 2 because files in the same package see each other without
 importing, so most intra-package edges can only ever be `INFERRED`.
 
@@ -154,10 +159,18 @@ private, an annotated one, a generic return type, and a body with `if` / `for`
 |---|---|
 | No visibility marker | Swift required `public`, so ordinary code indexed **zero** |
 | A `private` one | a rule on the wrong side of the trade |
-| An annotation above it | `@Service` broke the comment link, losing the description |
+| An annotation above it | `@Service` and `#[derive]` broke the comment link, losing the description |
 | A generic return type | C# had **no method rule at all** — types only, every method missing |
 | A receiver, in Kotlin | `fun Long.asMoney()` was indexed as `Long` |
+| **A method inside a class** | Dart and Python anchored at column 0 — every member of every class missing |
+| An `=>` body, a getter | most of idiomatic Dart matched neither |
+| A local `let` in a body | indexing Swift properties caught locals too, until a type annotation was required |
 | Control flow in a body | a pattern loose enough to read `if (` as a declaration |
+
+The column-0 one is the most expensive mistake on this list and the hardest to
+notice: top-level declarations still indexed, so the language looked like it
+worked. In a Flutter or Django codebase, where nearly everything is a class
+member, it meant almost nothing was in the index at all.
 
 Every one of those passed a fixture written *after* the pattern. Four of them
 were found the first time a file was written the way real code is written.

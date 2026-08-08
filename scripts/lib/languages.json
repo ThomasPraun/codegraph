@@ -136,13 +136,13 @@
     "doc": "above",
     "decls": [
       {
-        "re": "^(?:(?:abstract|sealed|final|base|interface|mixin)[ \\t]+)*(class|mixin|enum|extension|typedef)[ \\t]+([A-Za-z_$][\\w$]*)",
+        "re": "^[ \\t]*(?:(?:abstract|sealed|final|base|interface|mixin)[ \\t]+)*(class|mixin|enum|extension|typedef)[ \\t]+([A-Za-z_$][\\w$]*)",
         "kind": 1,
         "name": 2
       },
       {
-        "re": "^(?!(?:if|for|while|switch|catch|return|else)\\b)[A-Za-z_$][\\w$<>,.\\s[\\]?]*?[ \\t]+([A-Za-z_$][\\w$]*)[ \\t]*\\([^)]*\\)[ \\t]*(?:async[ \\t]*\\*?[ \\t]*)?\\{",
-        "kind": "function",
+        "re": "^[ \\t]*(?!(?:if|for|while|switch|catch|return|else|do|try|await|yield|assert|throw|new|class|mixin|enum|extension|typedef|abstract|sealed|interface|base)\\b)(?:(?:static|final|const|late|external|covariant)[ \\t]+)*[A-Za-z_$][\\w$<>,.\\s[\\]?]*?[ \\t]+(?:(?:get|set)[ \\t]+)?([A-Za-z_$][\\w$]*)[ \\t]*(?:\\([^)]*\\))?[ \\t]*(?:async[ \\t]*\\*?[ \\t]*)?(?:\\{|=>)",
+        "kind": "method",
         "name": 1
       }
     ],
@@ -158,7 +158,8 @@
       "packagePrefix": "package:",
       "packageDropSegments": 1,
       "packageRoot": "lib"
-    }
+    },
+    "docSkip": "^[ \\t]*@"
   },
   "python": {
     "label": "Python",
@@ -188,7 +189,7 @@
     "doc": "below",
     "decls": [
       {
-        "re": "^(?:async[ \\t]+)?(def|class)[ \\t]+([A-Za-z_][\\w]*)",
+        "re": "^[ \\t]*(?:async[ \\t]+)?(def|class)[ \\t]+([A-Za-z_][\\w]*)",
         "kind": 1,
         "name": 2
       }
@@ -213,7 +214,8 @@
         "src",
         "lib"
       ]
-    }
+    },
+    "docSkip": "^[ \\t]*@"
   },
   "go": {
     "label": "Go",
@@ -314,7 +316,8 @@
       ],
       "index": true,
       "indexName": "mod"
-    }
+    },
+    "docSkip": "^[ \\t]*#\\["
   },
   "ruby": {
     "label": "Ruby",
@@ -474,6 +477,11 @@
         "re": "^[ \\t]*(?![^\\n]*\\b(?:private|fileprivate)\\b)(?:(?:public|open|internal|final|static|class|override|mutating|indirect|@[\\w()]+)[ \\t]+)*(func|class|struct|enum|protocol|actor|typealias)[ \\t]+([A-Za-z_][\\w]*)",
         "kind": 1,
         "name": 2
+      },
+      {
+        "re": "^[ \\t]*(?![^\\n]*\\b(?:private|fileprivate)\\b)(?:(?:public|open|internal|final|static|class|override|lazy|weak|unowned|@[\\w()]+)[ \\t]+)*(var|let)[ \\t]+([A-Za-z_][\\w]*)[ \\t]*:",
+        "kind": 1,
+        "name": 2
       }
     ],
     "imports": [
@@ -487,7 +495,8 @@
         "Sources",
         "src"
       ]
-    }
+    },
+    "docSkip": "^[ \\t]*@"
   },
   "php": {
     "label": "PHP",
