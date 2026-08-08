@@ -14,7 +14,8 @@
 // looking for them.
 
 import {
-  load, tryLoad, words, nameWords, overlap, coverage, capped, NOT_PROOF, stalenessLine, staleness, outDirFor,
+  load, tryLoad, words, nameWords, overlap, coverage, capped, NOT_PROOF, stalenessLine, staleness,
+  outDirFor, here,
 } from './lib/graph.mjs'
 import { languagesFor, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
@@ -22,10 +23,6 @@ import { findDocFiles, readDoc, splice } from './lib/docs.mjs'
 import { existsSync, readFileSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 
-// The path this run was invoked with, so printed commands are copy-pasteable
-// from wherever the skill is installed. `scripts/...` is only right while
-// codegraph is the repo being indexed.
-const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
 
 const TWIN_HINT = 0.6
 

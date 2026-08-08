@@ -121,7 +121,7 @@ is for, and why a new language needs a case there in the same change.
 
 <!-- @codegraph:start — generated. Do not edit. -->
 
-**What lives here** — 58 exported symbols across 9 files.
+**What lives here** — 60 exported symbols across 9 files.
 
 *Most depended on — changing one of these reaches furthest:*
 
@@ -129,9 +129,9 @@ is for, and why a new language needs a case there in the same change.
 - `ignoreEpipe` · `scripts/lib/scan.mjs` — Stop a closed pipe from becoming a stack trace. `| head`, `| less` and every pager close stdout mid-write; un… (6 uses)
 - `languagesFor` · `scripts/lib/scan.mjs` — The language table for one repo: the shipped one, with any entry in `<root>/codegraph/languages.json` replaci… (6 uses)
 - `extract` · `scripts/extract.mjs` — Builds and writes the whole index. Affects: every command, and the gate's ability to check citations at all. (5 uses)
+- `here` · `scripts/lib/graph.mjs` — The command the caller actually invoked, so printed advice is copy-pasteable from wherever the skill is insta… (5 uses)
 - `isMain` · `scripts/lib/scan.mjs` — Whether this module is the script being run, rather than one being imported. Every main is guarded by it: ung… (5 uses)
-- `outDirFor` · `scripts/lib/graph.mjs` — Where every artefact lives. Changing this orphans existing indexes. (4 uses)
-- …and 36 more
+- …and 37 more
 
 *No other file references these — each is a way in, a helper used only inside its own file, or dead. The index cannot tell which:*
 
@@ -141,7 +141,7 @@ is for, and why a new language needs a case there in the same change.
 - `compile` · `scripts/lib/parse.mjs` — A language spec with its regexes built once. Compiling per file showed up in profiles long before anything el…
 - `bodyAt` · `scripts/lib/parse.mjs` — The body starting at the first `{` after `from`, brace-counted while ignoring braces inside strings and comme…
 - `commentAbove` · `scripts/lib/parse.mjs` — The comment immediately above `line`, if any. Blank lines break the association on purpose: a comment separat…
-- …and 10 more
+- …and 11 more
 
 A ranked sample, not an inventory, and it says what each thing *is* — never how any of it works. Searching the index by purpose covers all of them.
 

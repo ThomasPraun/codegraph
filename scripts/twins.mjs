@@ -15,16 +15,12 @@
 
 import { readFileSync, writeFileSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
-import { load, words, overlap, capped, outDirFor, stalenessLine } from './lib/graph.mjs'
+import { load, words, overlap, capped, outDirFor, stalenessLine, here } from './lib/graph.mjs'
 import { languagesFor, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { sketchSimilarity } from './lib/parse.mjs'
 
 // Thresholds start high on purpose. Five real pairs beat forty candidates: a
 // noisy detector is a disabled detector.
-// The path this run was invoked with, so printed commands are copy-pasteable
-// from wherever the skill is installed. `scripts/...` is only right while
-// codegraph is the repo being indexed.
-const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
 
 const SHAPE_MIN = 0.55
 const DESC_MIN = 0.5

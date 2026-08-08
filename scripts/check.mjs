@@ -16,7 +16,7 @@ import {
   findDocFiles, readDoc, classify, splice, bodyLineCount, pathExists, conventionOf,
 } from './lib/docs.mjs'
 import { renderMaps, scopeFingerprints, readFreshness } from './write-maps.mjs'
-import { tryLoad, outDirFor } from './lib/graph.mjs'
+import { tryLoad, outDirFor, here } from './lib/graph.mjs'
 import { ignoreEpipe, isMain } from './lib/scan.mjs'
 
 // A target, not a wall. Past it the answer is almost never "delete a sentence":
@@ -195,7 +195,19 @@ function main() {
   const { findings, notes, docs } = run(root)
 
   if (!docs.length) {
-    process.stdout.write('No CLAUDE.md or AGENTS.md files found. Nothing to check.\n')
+    // Not a dead end. This is the half of the tool nobody discovers on their
+    // own: the index answers what exists, and a doc file is the only place the
+    // things no index can derive — why it is this way, what breaks if you
+    // change it — can live and be told when their ground moves.
+    process.stdout.write(
+      'No CLAUDE.md or AGENTS.md in this tree, so there is nothing to check yet.\n\n' +
+      'The gate checks doc files; it does not write them. To start one:\n' +
+      '  1. Copy the template in references/root-template.md to ./CLAUDE.md\n' +
+      '  2. Put the two marker lines where the generated block belongs\n' +
+      `  3. ${here('write-maps.mjs')} --write\n\n` +
+      'A directory earns its own file only once it holds three or more things\n' +
+      'the code will not tell you. Below three, they belong in the parent.\n'
+    )
     return
   }
   // The budget counts what a human wrote; a reader loads the whole file, and

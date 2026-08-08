@@ -97,7 +97,7 @@ export function overlap(a, b) {
 
 /** The command the caller actually invoked, so printed advice is copy-pasteable
  *  from wherever the skill is installed rather than only from inside it. */
-const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
+export const here = (name) => `node ${join(dirname(process.argv[1] || '.'), name)}`
 
 /** Where every artefact lives. Changing this orphans existing indexes. */
 export function outDirFor(root) {

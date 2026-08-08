@@ -11,9 +11,10 @@
 // `get`, `format` and `index` appear everywhere.
 
 import { mkdirSync, writeFileSync, readFileSync, existsSync } from 'node:fs'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { walk, readFile, languagesFor, isProbablyText, OUT_DIR, ignoreEpipe, isMain } from './lib/scan.mjs'
 import { parseFile } from './lib/parse.mjs'
+import { here } from './lib/graph.mjs'
 
 // A name this short carries no information: it collides with everything and
 // resolving it would cost more confidence than it buys.
@@ -212,6 +213,48 @@ export function extract(root, outDir, { full = false } = {}) {
   return { index, reused, problems }
 }
 
+
+/** The two derived files, and the one place saying so belongs. */
+const DERIVED = [`${OUT_DIR}/index.json`, `${OUT_DIR}/.cache.json`]
+
+/**
+ * Whether git has been told to ignore the two derived files, and what to add
+ * when it has not.
+ *
+ * This run just wrote a folder into somebody's repo. `index.json` is derived
+ * and rebuilt in under a second, so committed it turns every code change into
+ * a thousand-line diff — and nothing else says so at the moment it matters.
+ * Told at the end of a build, it costs one line; found in a pull request, it
+ * costs a revert.
+ *
+ * It reports and never edits. A tool that rewrites `.gitignore` unasked is one
+ * that has decided something about a repo it was only asked to read.
+ */
+export function gitignoreNotice(root) {
+  const p = join(root, '.gitignore')
+  const text = existsSync(p) ? readFileSync(p, 'utf8') : null
+  const lines = new Set((text || '').split('\n').map((l) => l.trim()))
+  const missing = DERIVED.filter((d) => !lines.has(d) && !lines.has(`/${d}`) && !lines.has(`${OUT_DIR}/`))
+  if (text !== null && !missing.length) return ''
+  // No .gitignore and no .git either: a directory nobody is versioning, or a
+  // subdirectory of a repo whose ignores live further up. Advice about git
+  // there is noise, and noise on every build is how a real warning gets
+  // learned as something to skip.
+  if (text === null && !existsSync(join(root, '.git'))) return ''
+
+  return [
+    '',
+    text === null
+      ? 'Nothing here is ignored by git yet. Create a .gitignore with:'
+      : `Not ignored by git yet — add to ${p}:`,
+    ...missing.map((m) => `  ${m}`),
+    '  # derived, rebuilt in under a second; committed it makes every',
+    '  # code change a thousand-line diff. Everything else under',
+    `  # ${OUT_DIR}/ holds a decision a person made and belongs in git.`,
+    '',
+  ].join('\n')
+}
+
 function main() {
   ignoreEpipe()
   const args = process.argv.slice(2)
@@ -244,11 +287,16 @@ function main() {
       `${s.tier0 ? ` · ${s.tier0} tier 0` : ''}) · ${s.symbols} symbols · ${s.edges} edges\n` +
       `  ${s.confidence.EXTRACTED} certain, ${s.confidence.INFERRED} inferred,` +
       ` ${s.confidence.AMBIGUOUS} ambiguous, ${s.confidence.MENTIONED} mentioned\n` +
-      `${s.documented} documented · ${gaps} without a comment` +
-      `${gaps ? '  → codegraph gaps' : ''}\n` +
+      `${s.documented} documented · ${gaps} without a comment\n` +
       `${reused} files reused from cache\n` +
-      `written to ${join(outDir, 'index.json')}\n`
+      `written to ${join(outDir, 'index.json')}\n` +
+      // Named as a command that exists. It read `codegraph gaps` for a while,
+      // which is a third spelling: not the skill's flag, not the script's
+      // command, and valid nowhere.
+      (gaps ? `\nMost-used uncommented symbols first:\n  ${here('query.mjs')} gaps\n` : '')
   )
+
+  process.stdout.write(gitignoreNotice(root))
 }
 
 if (isMain(import.meta.url)) main()
