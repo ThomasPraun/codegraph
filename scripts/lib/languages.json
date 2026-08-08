@@ -1,10 +1,30 @@
 {
   "ts": {
     "label": "TypeScript / JavaScript",
-    "exts": [".ts", ".tsx", ".mts", ".cts", ".js", ".jsx", ".mjs", ".cjs"],
-    "line": ["//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\"", "'", "`"],
+    "exts": [
+      ".ts",
+      ".tsx",
+      ".mts",
+      ".cts",
+      ".js",
+      ".jsx",
+      ".mjs",
+      ".cjs"
+    ],
+    "line": [
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\"",
+      "'",
+      "`"
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
@@ -15,19 +35,54 @@
       }
     ],
     "imports": [
-      { "re": "import\\s+([\\s\\S]*?)\\s+from\\s*['\"]([^'\"]+)['\"]", "spec": 2, "clause": 1, "style": "braced" },
-      { "re": "import\\s*['\"]([^'\"]+)['\"]", "spec": 1 },
-      { "re": "(?:const|let|var)\\s+(\\{[^}]*\\}|[A-Za-z_$][\\w$]*)\\s*=\\s*require\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)", "spec": 2, "clause": 1, "style": "braced" }
+      {
+        "re": "import\\s+([\\s\\S]*?)\\s+from\\s*['\"]([^'\"]+)['\"]",
+        "spec": 2,
+        "clause": 1,
+        "style": "braced"
+      },
+      {
+        "re": "import\\s*['\"]([^'\"]+)['\"]",
+        "spec": 1
+      },
+      {
+        "re": "(?:const|let|var)\\s+(\\{[^}]*\\}|[A-Za-z_$][\\w$]*)\\s*=\\s*require\\s*\\(\\s*['\"]([^'\"]+)['\"]\\s*\\)",
+        "spec": 2,
+        "clause": 1,
+        "style": "braced"
+      }
     ],
-    "resolve": { "index": true, "aliasRoots": ["src", "lib"] }
+    "resolve": {
+      "index": true,
+      "aliasRoots": [
+        "src",
+        "lib"
+      ]
+    }
   },
-
   "astro": {
     "label": "Astro",
-    "exts": [".astro"],
-    "line": ["//"],
-    "block": [["/*", "*/"], ["<!--", "-->"]],
-    "strings": ["\"", "'", "`"],
+    "exts": [
+      ".astro"
+    ],
+    "line": [
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ],
+      [
+        "<!--",
+        "-->"
+      ]
+    ],
+    "strings": [
+      "\"",
+      "'",
+      "`"
+    ],
     "body": "braces",
     "doc": "above",
     "fileIsComponent": true,
@@ -39,18 +94,44 @@
       }
     ],
     "imports": [
-      { "re": "import\\s+([\\s\\S]*?)\\s+from\\s*['\"]([^'\"]+)['\"]", "spec": 2, "clause": 1, "style": "braced" },
-      { "re": "import\\s*['\"]([^'\"]+)['\"]", "spec": 1 }
+      {
+        "re": "import\\s+([\\s\\S]*?)\\s+from\\s*['\"]([^'\"]+)['\"]",
+        "spec": 2,
+        "clause": 1,
+        "style": "braced"
+      },
+      {
+        "re": "import\\s*['\"]([^'\"]+)['\"]",
+        "spec": 1
+      }
     ],
-    "resolve": { "index": true, "aliasRoots": ["src", "lib"] }
+    "resolve": {
+      "index": true,
+      "aliasRoots": [
+        "src",
+        "lib"
+      ]
+    }
   },
-
   "dart": {
     "label": "Dart / Flutter",
-    "exts": [".dart"],
-    "line": ["///", "//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\"", "'"],
+    "exts": [
+      ".dart"
+    ],
+    "line": [
+      "///",
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\"",
+      "'"
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
@@ -66,56 +147,144 @@
       }
     ],
     "imports": [
-      { "re": "(?:import|export|part)\\s+['\"]([^'\"]+)['\"]([^;]*);", "spec": 1, "clause": 2, "style": "show" }
+      {
+        "re": "(?:import|export|part)\\s+['\"]([^'\"]+)['\"]([^;]*);",
+        "spec": 1,
+        "clause": 2,
+        "style": "show"
+      }
     ],
-    "resolve": { "packagePrefix": "package:", "packageDropSegments": 1, "packageRoot": "lib" }
+    "resolve": {
+      "packagePrefix": "package:",
+      "packageDropSegments": 1,
+      "packageRoot": "lib"
+    }
   },
-
   "python": {
     "label": "Python",
-    "exts": [".py", ".pyi"],
-    "line": ["#"],
+    "exts": [
+      ".py",
+      ".pyi"
+    ],
+    "line": [
+      "#"
+    ],
     "block": [],
-    "blockStrings": [["\"\"\"", "\"\"\""], ["'''", "'''"]],
-    "strings": ["\"", "'"],
+    "blockStrings": [
+      [
+        "\"\"\"",
+        "\"\"\""
+      ],
+      [
+        "'''",
+        "'''"
+      ]
+    ],
+    "strings": [
+      "\"",
+      "'"
+    ],
     "body": "indent",
     "doc": "below",
     "decls": [
-      { "re": "^(?:async[ \\t]+)?(def|class)[ \\t]+([A-Za-z_][\\w]*)", "kind": 1, "name": 2 }
+      {
+        "re": "^(?:async[ \\t]+)?(def|class)[ \\t]+([A-Za-z_][\\w]*)",
+        "kind": 1,
+        "name": 2
+      }
     ],
     "imports": [
-      { "re": "^[ \\t]*from[ \\t]+([\\w.]+)[ \\t]+import[ \\t]+([^\\n]+)", "spec": 1, "clause": 2, "style": "list" },
-      { "re": "^[ \\t]*import[ \\t]+([\\w.]+)", "spec": 1 }
+      {
+        "re": "^[ \\t]*from[ \\t]+([\\w.]+)[ \\t]+import[ \\t]+([^\\n]+)",
+        "spec": 1,
+        "clause": 2,
+        "style": "list"
+      },
+      {
+        "re": "^[ \\t]*import[ \\t]+([\\w.]+)",
+        "spec": 1
+      }
     ],
-    "resolve": { "specSep": ".", "index": true, "indexName": "__init__", "aliasRoots": ["src", "lib"] }
+    "resolve": {
+      "specSep": ".",
+      "index": true,
+      "indexName": "__init__",
+      "aliasRoots": [
+        "src",
+        "lib"
+      ]
+    }
   },
-
   "go": {
     "label": "Go",
-    "exts": [".go"],
-    "line": ["//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\"", "`"],
+    "exts": [
+      ".go"
+    ],
+    "line": [
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\"",
+      "`"
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
-      { "re": "^func[ \\t]+(?:\\([^)]*\\)[ \\t]*)?([A-Z][\\w]*)", "kind": "function", "name": 1 },
-      { "re": "^type[ \\t]+([A-Z][\\w]*)", "kind": "type", "name": 1 },
-      { "re": "^(?:var|const)[ \\t]+([A-Z][\\w]*)", "kind": "const", "name": 1 }
+      {
+        "re": "^func[ \\t]+(?:\\([^)]*\\)[ \\t]*)?([A-Z][\\w]*)",
+        "kind": "function",
+        "name": 1
+      },
+      {
+        "re": "^type[ \\t]+([A-Z][\\w]*)",
+        "kind": "type",
+        "name": 1
+      },
+      {
+        "re": "^(?:var|const)[ \\t]+([A-Z][\\w]*)",
+        "kind": "const",
+        "name": 1
+      }
     ],
     "imports": [
-      { "re": "import[ \\t]+\"([^\"]+)\"", "spec": 1 },
-      { "re": "import[ \\t]*\\(([\\s\\S]*?)\\)", "specsFrom": 1 }
+      {
+        "re": "import[ \\t]+\"([^\"]+)\"",
+        "spec": 1
+      },
+      {
+        "re": "import[ \\t]*\\(([\\s\\S]*?)\\)",
+        "specsFrom": 1
+      }
     ],
-    "resolve": { "lastSegments": true }
+    "resolve": {
+      "lastSegments": true
+    }
   },
-
   "rust": {
     "label": "Rust",
-    "exts": [".rs"],
-    "line": ["///", "//!", "//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\""],
+    "exts": [
+      ".rs"
+    ],
+    "line": [
+      "///",
+      "//!",
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\""
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
@@ -126,35 +295,84 @@
       }
     ],
     "imports": [
-      { "re": "^[ \\t]*(?:pub[ \\t]+)?use[ \\t]+([^;]+);", "spec": 1, "clause": 1, "style": "pathBraced" }
+      {
+        "re": "^[ \\t]*(?:pub[ \\t]+)?use[ \\t]+([^;]+);",
+        "spec": 1,
+        "clause": 1,
+        "style": "pathBraced"
+      }
     ],
-    "resolve": { "specSep": "::", "stripSpecPrefixes": ["crate", "self", "super"], "aliasRoots": ["src"], "index": true, "indexName": "mod" }
+    "resolve": {
+      "specSep": "::",
+      "stripSpecPrefixes": [
+        "crate",
+        "self",
+        "super"
+      ],
+      "aliasRoots": [
+        "src"
+      ],
+      "index": true,
+      "indexName": "mod"
+    }
   },
-
   "ruby": {
     "label": "Ruby",
-    "exts": [".rb"],
-    "line": ["#"],
+    "exts": [
+      ".rb"
+    ],
+    "line": [
+      "#"
+    ],
     "block": [],
-    "strings": ["\"", "'"],
+    "strings": [
+      "\"",
+      "'"
+    ],
     "body": "none",
     "doc": "above",
     "decls": [
-      { "re": "^[ \\t]*(class|module)[ \\t]+([A-Z][\\w:]*)", "kind": 1, "name": 2 },
-      { "re": "^[ \\t]*(def)[ \\t]+(?:self\\.)?([a-zA-Z_][\\w]*[?!]?)", "kind": "function", "name": 2 }
+      {
+        "re": "^[ \\t]*(class|module)[ \\t]+([A-Z][\\w:]*)",
+        "kind": 1,
+        "name": 2
+      },
+      {
+        "re": "^[ \\t]*(def)[ \\t]+(?:self\\.)?([a-zA-Z_][\\w]*[?!]?)",
+        "kind": "function",
+        "name": 2
+      }
     ],
     "imports": [
-      { "re": "require(?:_relative)?[ \\t]+['\"]([^'\"]+)['\"]", "spec": 1 }
+      {
+        "re": "require(?:_relative)?[ \\t]+['\"]([^'\"]+)['\"]",
+        "spec": 1
+      }
     ],
-    "resolve": { "aliasRoots": ["lib", "app"] }
+    "resolve": {
+      "aliasRoots": [
+        "lib",
+        "app"
+      ]
+    }
   },
-
   "java": {
     "label": "Java",
-    "exts": [".java"],
-    "line": ["//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\""],
+    "exts": [
+      ".java"
+    ],
+    "line": [
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\""
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
@@ -170,38 +388,85 @@
       }
     ],
     "imports": [
-      { "re": "^[ \\t]*import[ \\t]+(?:static[ \\t]+)?([\\w.]+)[ \\t]*;", "spec": 1, "clause": 1, "style": "lastSegment" }
+      {
+        "re": "^[ \\t]*import[ \\t]+(?:static[ \\t]+)?([\\w.]+)[ \\t]*;",
+        "spec": 1,
+        "clause": 1,
+        "style": "lastSegment"
+      }
     ],
-    "resolve": { "specSep": ".", "aliasRoots": ["src/main/java", "src", "app/src/main/java"] }
+    "resolve": {
+      "specSep": ".",
+      "aliasRoots": [
+        "src/main/java",
+        "src",
+        "app/src/main/java"
+      ]
+    },
+    "docSkip": "^[ \\t]*@"
   },
-
   "kotlin": {
     "label": "Kotlin",
-    "exts": [".kt", ".kts"],
-    "line": ["//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\""],
+    "exts": [
+      ".kt",
+      ".kts"
+    ],
+    "line": [
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\""
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
       {
-        "re": "^[ \\t]*(?![^\\n]*\\bprivate\\b)(?:(?:public|internal|protected|open|abstract|sealed|data|inline|suspend|override|final|value|annotation|external|tailrec|operator)[ \\t]+)*(fun|class|object|interface|typealias)[ \\t]+(?:<[^>]*>[ \\t]*)?([A-Za-z_][\\w]*)",
+        "re": "^[ \\t]*(?![^\\n]*\\bprivate\\b)(?:(?:public|internal|protected|open|abstract|sealed|data|inline|suspend|override|final|value|annotation|external|tailrec|operator)[ \\t]+)*(fun|class|object|interface|typealias)[ \\t]+(?:<[^>]*>[ \\t]*)?(?:[A-Za-z_][\\w]*(?:<[^>]*>)?\\??\\.)?([A-Za-z_][\\w]*)",
         "kind": 1,
         "name": 2
       }
     ],
     "imports": [
-      { "re": "^[ \\t]*import[ \\t]+([\\w.]+)", "spec": 1, "clause": 1, "style": "lastSegment" }
+      {
+        "re": "^[ \\t]*import[ \\t]+([\\w.]+)",
+        "spec": 1,
+        "clause": 1,
+        "style": "lastSegment"
+      }
     ],
-    "resolve": { "specSep": ".", "aliasRoots": ["src/main/kotlin", "src"] }
+    "resolve": {
+      "specSep": ".",
+      "aliasRoots": [
+        "src/main/kotlin",
+        "src"
+      ]
+    },
+    "docSkip": "^[ \\t]*@"
   },
-
   "swift": {
     "label": "Swift",
-    "exts": [".swift"],
-    "line": ["///", "//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\""],
+    "exts": [
+      ".swift"
+    ],
+    "line": [
+      "///",
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\""
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
@@ -212,39 +477,86 @@
       }
     ],
     "imports": [
-      { "re": "^[ \\t]*import[ \\t]+([\\w.]+)", "spec": 1 }
+      {
+        "re": "^[ \\t]*import[ \\t]+([\\w.]+)",
+        "spec": 1
+      }
     ],
-    "resolve": { "aliasRoots": ["Sources", "src"] }
+    "resolve": {
+      "aliasRoots": [
+        "Sources",
+        "src"
+      ]
+    }
   },
-
   "php": {
     "label": "PHP",
-    "exts": [".php"],
-    "line": ["//", "#"],
-    "block": [["/*", "*/"]],
-    "strings": ["\"", "'"],
+    "exts": [
+      ".php"
+    ],
+    "line": [
+      "//",
+      "#"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\"",
+      "'"
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
       {
-        "re": "^[ \\t]*(?:(?:abstract|final|public|readonly)[ \\t]+)*(function|class|interface|trait|enum)[ \\t]+([A-Za-z_][\\w]*)",
+        "re": "^[ \\t]*(?![^\\n]*\\bprivate\\b)(?:(?:abstract|final|public|protected|readonly|static)[ \\t]+)*(function|class|interface|trait|enum)[ \\t]+([A-Za-z_][\\w]*)",
         "kind": 1,
         "name": 2
       }
     ],
     "imports": [
-      { "re": "^[ \\t]*use[ \\t]+([\\w\\\\]+)", "spec": 1, "clause": 1, "style": "lastSegment" },
-      { "re": "require(?:_once)?[ \\t]*\\(?[ \\t]*['\"]([^'\"]+)['\"]", "spec": 1 }
+      {
+        "re": "^[ \\t]*use[ \\t]+([\\w\\\\]+)",
+        "spec": 1,
+        "clause": 1,
+        "style": "lastSegment"
+      },
+      {
+        "re": "require(?:_once)?[ \\t]*\\(?[ \\t]*['\"]([^'\"]+)['\"]",
+        "spec": 1
+      }
     ],
-    "resolve": { "specSep": "\\", "aliasRoots": ["src", "app", "lib"] }
+    "resolve": {
+      "specSep": "\\",
+      "aliasRoots": [
+        "src",
+        "app",
+        "lib"
+      ]
+    },
+    "docSkip": "^[ \\t]*#\\["
   },
-
   "csharp": {
     "label": "C#",
-    "exts": [".cs"],
-    "line": ["///", "//"],
-    "block": [["/*", "*/"]],
-    "strings": ["\""],
+    "exts": [
+      ".cs"
+    ],
+    "line": [
+      "///",
+      "//"
+    ],
+    "block": [
+      [
+        "/*",
+        "*/"
+      ]
+    ],
+    "strings": [
+      "\""
+    ],
     "body": "braces",
     "doc": "above",
     "decls": [
@@ -252,11 +564,27 @@
         "re": "^[ \\t]*(?![^\\n]*\\bprivate\\b)(?:(?:public|internal|protected|static|sealed|abstract|partial|readonly|file)[ \\t]+)*(class|interface|struct|enum|record|delegate)[ \\t]+([A-Za-z_][\\w]*)",
         "kind": 1,
         "name": 2
+      },
+      {
+        "re": "^[ \\t]+(?![^\\n]*\\bprivate\\b)(?!(?:if|for|foreach|while|switch|catch|return|else|do|try|new|throw|using|lock|fixed|await|yield|var|in|is|as|checked|unchecked)\\b)(?:(?:public|internal|protected|static|virtual|override|abstract|sealed|async|extern|unsafe|partial|new|readonly)[ \\t]+)*[A-Za-z_][\\w<>\\[\\],.?]*[ \\t]+([A-Za-z_][\\w]*)[ \\t]*\\(",
+        "kind": "method",
+        "name": 1
       }
     ],
     "imports": [
-      { "re": "^[ \\t]*using[ \\t]+(?:static[ \\t]+)?([\\w.]+)[ \\t]*;", "spec": 1, "clause": 1, "style": "lastSegment" }
+      {
+        "re": "^[ \\t]*using[ \\t]+(?:static[ \\t]+)?([\\w.]+)[ \\t]*;",
+        "spec": 1,
+        "clause": 1,
+        "style": "lastSegment"
+      }
     ],
-    "resolve": { "specSep": ".", "aliasRoots": ["src"] }
+    "resolve": {
+      "specSep": ".",
+      "aliasRoots": [
+        "src"
+      ]
+    },
+    "docSkip": "^[ \\t]*\\["
   }
 }

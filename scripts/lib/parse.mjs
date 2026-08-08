@@ -71,6 +71,8 @@ export function compile(spec) {
     lineRe: (spec.line || []).length
       ? new RegExp(`^\\s*(?:${[...(spec.line || [])].sort((a, b) => b.length - a.length).map(escapeRe).join('|')})\\s?`)
       : null,
+    // Lines allowed between a comment and the declaration it describes.
+    docSkipRe: spec.docSkip ? new RegExp(spec.docSkip) : null,
   }
   cache.set(spec, built)
   return built
@@ -298,11 +300,20 @@ function finish(collected) {
  * The comment immediately above `line`, if any. Blank lines break the
  * association on purpose: a comment separated by a blank line is documenting
  * something else, and inheriting it would put a wrong description in the index.
+ *
+ * A language may declare lines that sit between the two without breaking it —
+ * `docSkip` in its table entry. Annotations are what this is for: `@Service`,
+ * `@Composable`, `[HttpGet]` and `#[Attribute]` are written under the comment
+ * and above the declaration, and counted as a break they cost the description
+ * of exactly the classes most likely to have one. Nothing here names a
+ * language; the pattern arrives from the table like every other.
  */
 export function commentAbove(lines, line, c = null) {
   const g = c || TIER0_C
   let i = line - 1
   const collected = []
+
+  while (i >= 0 && g.docSkipRe && g.docSkipRe.test(lines[i])) i--
 
   const closer = g.block.find(([, close]) => i >= 0 && new RegExp(`${escapeRe(close)}\\s*$`).test(lines[i] || ''))
   if (closer) {

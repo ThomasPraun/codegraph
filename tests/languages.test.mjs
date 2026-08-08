@@ -24,10 +24,26 @@ const { cases, snippets } = JSON.parse(
 const names = (path, langId, src) =>
   parseFile(path, BUILTIN_LANGS[langId], src).symbols.map((s) => s.name).sort()
 
-for (const { lang, path, src, expected } of cases) {
+const parsed = (path, langId, src) => parseFile(path, BUILTIN_LANGS[langId], src).symbols
+
+for (const { lang, path, src, expected, documented } of cases) {
   test(`${lang}: finds its public symbols`, () => {
     assert.deepEqual(names(path, lang, src), expected)
   })
+
+  // A found symbol with no description lands in `gaps` and cannot be searched
+  // by purpose, which is most of what the index is for. Annotations are what
+  // breaks this — `@Service`, `[HttpGet]`, `#[Attribute]` sit between the
+  // comment and the declaration and were counted as a blank line, costing the
+  // description of exactly the classes most likely to carry one.
+  if (documented) {
+    test(`${lang}: keeps the description attached`, () => {
+      const missing = parsed(path, lang, src)
+        .filter((s) => documented.includes(s.name) && !s.desc)
+        .map((s) => s.name)
+      assert.deepEqual(missing, [], 'these lost their comment')
+    })
+  }
 }
 
 test('every shipped language compiles and declares extensions', () => {

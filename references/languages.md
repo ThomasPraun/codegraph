@@ -147,9 +147,20 @@ Swift shipped matching `public` only, passing its test, and finding zero symbols
 in every ordinary Swift file.
 
 Include in every fixture: a declaration with no visibility marker, one marked
-private, and a body with `if` / `for` / `while` / `catch` in it. The first two
-catch a rule on the wrong side; the third catches a pattern loose enough to read
-control flow as a declaration.
+private, an annotated one, a generic return type, and a body with `if` / `for`
+/ `while` / `catch` in it. Each catches a fault that has actually shipped here:
+
+| In the fixture | What it caught |
+|---|---|
+| No visibility marker | Swift required `public`, so ordinary code indexed **zero** |
+| A `private` one | a rule on the wrong side of the trade |
+| An annotation above it | `@Service` broke the comment link, losing the description |
+| A generic return type | C# had **no method rule at all** — types only, every method missing |
+| A receiver, in Kotlin | `fun Long.asMoney()` was indexed as `Long` |
+| Control flow in a body | a pattern loose enough to read `if (` as a declaration |
+
+Every one of those passed a fixture written *after* the pattern. Four of them
+were found the first time a file was written the way real code is written.
 
 ## The table format
 
@@ -176,6 +187,11 @@ control flow as a declaration.
 
 - `kind` — a group number to read the kind from, or a literal string.
 - `name` — the group number holding the symbol name.
+- `docSkip` — lines allowed between the comment and the declaration without
+  breaking the association. Annotations are the whole reason it exists:
+  `@Service`, `@Composable`, `[HttpGet]` and `#[Attribute]` are written under
+  the comment and above the declaration, and counted as a blank line they cost
+  the description of exactly the classes most likely to carry one.
 - `privatePrefix` — defaults to `_`; set to `""` where that is not the
   convention.
 - `fileIsComponent` — the file itself is a symbol, named from its path.

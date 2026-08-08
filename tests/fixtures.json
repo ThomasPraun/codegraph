@@ -48,21 +48,47 @@
     },
     {
       "lang": "java",
-      "path": "src/Invoice.java",
-      "src": "\n/** A service. */\nclass OrderService {\n    /** Totals every line. */\n    int total(int[] xs) {\n        int sum = 0;\n        if (xs == null) { return 0; }\n        for (int x : xs) { sum += x; }\n        while (sum > 100) { sum--; }\n        try { doThing(); } catch (Exception e) { }\n        return sum;\n    }\n    private void secret() {}\n    /** The name. */\n    public String name() { return \"x\"; }\n}\n",
+      "path": "src/InvoiceService.java",
+      "src": "package com.acme.billing;\n\nimport java.util.List;\nimport java.util.Optional;\nimport org.springframework.stereotype.Service;\n\n/** Turns a cart into an invoice, applying whatever discounts are live. */\n@Service\npublic class InvoiceService {\n\n    private final DiscountRepository discounts;\n    private static final int MAX_LINES = 200;\n\n    public InvoiceService(DiscountRepository discounts) {\n        this.discounts = discounts;\n    }\n\n    /** The invoice for one cart, or empty when the cart has no billable lines. */\n    public Optional<Invoice> build(Cart cart) {\n        if (cart.lines().isEmpty()) {\n            return Optional.empty();\n        }\n        long total = 0;\n        for (CartLine line : cart.lines()) {\n            total += line.amountCents();\n        }\n        while (total < 0) {\n            total = 0;\n        }\n        try {\n            return Optional.of(new Invoice(cart.id(), applyDiscounts(total)));\n        } catch (IllegalStateException e) {\n            return Optional.empty();\n        }\n    }\n\n    /** Total after every live discount. Package-private: only the tests call it. */\n    long applyDiscounts(long totalCents) {\n        return discounts.liveFor(totalCents).stream().reduce(totalCents, (a, b) -> a - b, Long::sum);\n    }\n\n    private void audit(String message) {\n        System.out.println(message);\n    }\n}\n\n/** A line as stored. */\nrecord CartLine(String sku, long amountCents) {}\n\ninterface DiscountRepository {\n    List<Long> liveFor(long totalCents);\n}\n\nenum InvoiceState { DRAFT, ISSUED, PAID }\n",
       "expected": [
-        "OrderService",
-        "name",
-        "total"
+        "CartLine",
+        "DiscountRepository",
+        "InvoiceService",
+        "InvoiceState",
+        "applyDiscounts",
+        "build",
+        "liveFor"
+      ],
+      "documented": [
+        "InvoiceService",
+        "build",
+        "applyDiscounts",
+        "CartLine"
       ]
     },
     {
       "lang": "kotlin",
-      "path": "src/UserRepo.kt",
-      "src": "\n/** A repository. */\ninternal class UserRepo {\n    /** Finds one. */\n    fun find(id: Int): String {\n        if (id < 0) return \"\"\n        for (i in 1..3) { println(i) }\n        return \"x\"\n    }\n    private fun secret() {}\n}\n",
+      "path": "src/OrderRepository.kt",
+      "src": "package com.acme.orders.data\n\nimport kotlinx.coroutines.Dispatchers\nimport kotlinx.coroutines.withContext\nimport com.acme.orders.model.Order\n\n/** An order as the API returns it, before it is mapped to the domain type. */\ndata class OrderDto(\n    val id: String,\n    val totalCents: Long,\n    val currency: String,\n)\n\n/** Everything that can go wrong fetching orders. */\nsealed class OrderError {\n    object NotFound : OrderError()\n    data class Network(val cause: Throwable) : OrderError()\n}\n\n/** Reads and writes orders, going to the network only when the cache misses. */\nclass OrderRepository(\n    private val api: OrderApi,\n    private val cache: OrderCache,\n) {\n    private var inFlight: MutableMap<String, Order> = mutableMapOf()\n\n    /** One order by id. Hits the network only when the cache does not have it. */\n    suspend fun load(id: String): Order? = withContext(Dispatchers.IO) {\n        cache.get(id)?.let { return@withContext it }\n        val dto = try {\n            api.fetch(id)\n        } catch (e: Exception) {\n            return@withContext null\n        }\n        for (listener in listeners) {\n            listener.onLoaded(dto)\n        }\n        toDomain(dto).also { cache.put(id, it) }\n    }\n\n    /** Drops everything cached. Called when the signed-in user changes. */\n    fun clear() {\n        inFlight.clear()\n        cache.evictAll()\n    }\n\n    private fun toDomain(dto: OrderDto): Order = Order(dto.id, dto.totalCents)\n\n    companion object {\n        const val MAX_RETRIES = 3\n    }\n}\n\n/** Formats cents as the user's local currency. */\nfun Long.asMoney(currency: String): String = \"$currency ${this / 100}\"\n\ninternal object OrderMetrics {\n    fun record(name: String) {}\n}\n",
       "expected": [
-        "UserRepo",
-        "find"
+        "Network",
+        "NotFound",
+        "OrderDto",
+        "OrderError",
+        "OrderMetrics",
+        "OrderRepository",
+        "asMoney",
+        "clear",
+        "load",
+        "record"
+      ],
+      "documented": [
+        "OrderRepository",
+        "load",
+        "clear",
+        "OrderDto",
+        "OrderError",
+        "asMoney"
       ]
     },
     {
@@ -78,20 +104,39 @@
     },
     {
       "lang": "php",
-      "path": "src/Invoice.php",
-      "src": "<?php\n/** An invoice. */\nclass Invoice {\n    /** Totals every line. */\n    public function total() { return 0; }\n}\n",
+      "path": "src/SessionStore.php",
+      "src": "<?php\n\nnamespace Acme\\Auth;\n\nuse Acme\\Cache\\CacheInterface;\nuse Psr\\Log\\LoggerInterface;\n\n# Keeps sessions in the cache and knows when one has expired.\nclass SessionStore implements SessionStoreInterface\n{\n    private CacheInterface $cache;\n    private const TTL_SECONDS = 3600;\n\n    public function __construct(CacheInterface $cache, LoggerInterface $log)\n    {\n        $this->cache = $cache;\n    }\n\n    # The session for a token, or null when it is missing or expired.\n    public function find(string $token): ?Session\n    {\n        $raw = $this->cache->get($token);\n        if ($raw === null) {\n            return null;\n        }\n        foreach ($raw['claims'] as $claim) {\n            if ($this->isExpired($claim)) {\n                return null;\n            }\n        }\n        try {\n            return Session::fromArray($raw);\n        } catch (\\JsonException $e) {\n            return null;\n        }\n    }\n\n    # Writes the session and resets its clock.\n    public function save(Session $session): void\n    {\n        $this->cache->set($session->token(), $session->toArray(), self::TTL_SECONDS);\n    }\n\n    private function isExpired(array $claim): bool\n    {\n        return $claim['exp'] < time();\n    }\n}\n\ninterface SessionStoreInterface\n{\n    public function find(string $token): ?Session;\n}\n\ntrait ClockAware\n{\n    protected function now(): int { return time(); }\n}\n",
       "expected": [
-        "Invoice",
-        "total"
+        "ClockAware",
+        "SessionStore",
+        "SessionStoreInterface",
+        "find",
+        "now",
+        "save"
+      ],
+      "documented": [
+        "SessionStore",
+        "find",
+        "save"
       ]
     },
     {
       "lang": "csharp",
-      "path": "src/Invoice.cs",
-      "src": "\n/// A service.\ninternal class OrderService {\n    private int hidden;\n}\n\n/// One line.\npublic record Line(int Amount);\n",
+      "path": "src/PaymentGateway.cs",
+      "src": "using System;\nusing System.Threading.Tasks;\nusing System.Collections.Generic;\n\nnamespace Acme.Payments\n{\n    /// <summary>Charges a card and records the attempt.</summary>\n    public class PaymentGateway : IPaymentGateway\n    {\n        private readonly HttpClient _http;\n        private const int Retries = 3;\n\n        public PaymentGateway(HttpClient http)\n        {\n            _http = http;\n        }\n\n        /// <summary>Charges the card, retrying on a transient failure.</summary>\n        public async Task<ChargeResult> ChargeAsync(string token, long amountCents)\n        {\n            for (var attempt = 0; attempt < Retries; attempt++)\n            {\n                try\n                {\n                    return await SendAsync(token, amountCents);\n                }\n                catch (TimeoutException)\n                {\n                    if (attempt == Retries - 1) throw;\n                }\n            }\n            return ChargeResult.Failed;\n        }\n\n        /// <summary>Whether a refund is still allowed for this charge.</summary>\n        internal bool CanRefund(Charge charge) => charge.AgeDays < 90;\n\n        private async Task<ChargeResult> SendAsync(string token, long cents) =>\n            await Task.FromResult(ChargeResult.Ok);\n    }\n\n    public interface IPaymentGateway\n    {\n        Task<ChargeResult> ChargeAsync(string token, long amountCents);\n    }\n\n    /// <summary>How a charge ended.</summary>\n    public enum ChargeResult { Ok, Failed, Pending }\n\n    public record Charge(string Id, int AgeDays);\n}\n",
       "expected": [
-        "Line",
-        "OrderService"
+        "CanRefund",
+        "Charge",
+        "ChargeAsync",
+        "ChargeResult",
+        "IPaymentGateway",
+        "PaymentGateway"
+      ],
+      "documented": [
+        "PaymentGateway",
+        "ChargeAsync",
+        "CanRefund",
+        "ChargeResult"
       ]
     },
     {
