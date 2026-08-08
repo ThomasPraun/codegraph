@@ -33,6 +33,16 @@ about meaning, and those get switched off.
 can come back empty prints `NOT_PROOF`. Removing that line turns an honest miss
 into permission to write the duplicate.
 
+**Everything this skill writes is in English** — code, comments, docs, command
+output, fixtures, identifiers in examples. What language the person is spoken
+to in is the agent's decision, made per conversation, and nothing here should
+try to make it.
+
+That is separate from what the skill can *read*. `normalize` strips accents,
+`STOPWORDS` and the `AFFECTS` clause carry non-English forms, and those stay:
+they match comments in the repo being indexed, which are the user's text, not
+this skill's. Deleting them would cost real descriptions in real repos.
+
 ## Gotchas
 
 `identifiers` reads code with comments and strings blanked by `stripNonCode`.

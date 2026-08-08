@@ -20,7 +20,7 @@ scope: .
 
 # Fixture
 
-\`simboloQueNoExiste\` is cited here and declared nowhere.
+\`symbolThatDoesNotExist\` is cited here and declared nowhere.
 
 <!-- @codegraph:start — generated. Do not edit. -->
 <!-- @codegraph:end -->
@@ -34,7 +34,7 @@ function repo() {
   return dir
 }
 
-const cites = (findings) => findings.some((f) => f.msg.includes('simboloQueNoExiste'))
+const cites = (findings) => findings.some((f) => f.msg.includes('symbolThatDoesNotExist'))
 const unchecked = (findings) => findings.some((f) => f.msg.includes('were NOT checked'))
 
 test('a citation to a symbol that does not exist is a finding', () => {

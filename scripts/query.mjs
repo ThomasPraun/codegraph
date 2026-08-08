@@ -4,8 +4,8 @@
 //
 //   node scripts/query.mjs                              orientation and options
 //   node scripts/query.mjs status                       where this repo stands
-//   node scripts/query.mjs find "formatear moneda" [--root .] [--limit 8]
-//   node scripts/query.mjs who formatearMoneda
+//   node scripts/query.mjs find "format an amount" [--root .] [--limit 8]
+//   node scripts/query.mjs who formatMoney
 //   node scripts/query.mjs ripples src/utils/money.ts
 //   node scripts/query.mjs gaps [path]
 //
