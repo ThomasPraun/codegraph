@@ -1,4 +1,5 @@
-// What `codegraph` with nothing after it answers.
+// `status` — where a repo stands — and `orient`, which is what nothing after
+// the command means.
 //
 // Two properties matter more than the wording. It must survive having no index
 // — that is the state it exists to report, and every other command exits 2 on
@@ -13,7 +14,7 @@ import { join } from 'node:path'
 import { execFileSync } from 'node:child_process'
 import { extract } from '../scripts/extract.mjs'
 import { languagesFor, OUT_DIR } from '../scripts/lib/scan.mjs'
-import { status } from '../scripts/query.mjs'
+import { status, orient } from '../scripts/query.mjs'
 
 const QUERY = new URL('../scripts/query.mjs', import.meta.url).pathname
 
@@ -42,11 +43,28 @@ test('with no index it reports that, instead of exiting', () => {
   }
 })
 
-test('the bare invocation is status, not a usage error', () => {
+test('the bare invocation orients and offers, rather than reporting', () => {
   const dir = repo()
   try {
     const out = execFileSync('node', [QUERY, '--root', dir], { encoding: 'utf8' })
-    assert.match(out, /^codegraph · /)
+    assert.match(out, /--status/, 'the options are the point')
+    assert.match(out, /Ask in words/, 'questions belong in prose, and it has to say so')
+    // Someone with no command has not asked how stale anything is. Counts are
+    // an answer to a question they have not formed, and they bury the one
+    // thing that helps, which is what to type next.
+    assert.doesNotMatch(out, /Drift/)
+    assert.doesNotMatch(out, /worst:/)
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('orienting works before there is anything to report', () => {
+  const dir = repo({ indexed: false })
+  try {
+    const out = orient(dir)
+    assert.match(out, /No index here yet/)
+    assert.match(out, /--index/, 'which makes one option the obvious first')
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }

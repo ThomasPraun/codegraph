@@ -111,7 +111,7 @@ is for, and why a new language needs a case there in the same change.
 
 <!-- @codegraph:start — generated. Do not edit. -->
 
-**What lives here** — 57 exported symbols across 9 files.
+**What lives here** — 58 exported symbols across 9 files.
 
 *Most depended on — changing one of these reaches furthest:*
 
@@ -121,7 +121,7 @@ is for, and why a new language needs a case there in the same change.
 - `extract` · `scripts/extract.mjs` — Builds and writes the whole index. Affects: every command, and the gate's ability to check citations at all. (5 uses)
 - `isMain` · `scripts/lib/scan.mjs` — Whether this module is the script being run, rather than one being imported. Every main is guarded by it: ung… (5 uses)
 - `outDirFor` · `scripts/lib/graph.mjs` — Where every artefact lives. Changing this orphans existing indexes. (4 uses)
-- …and 35 more
+- …and 36 more
 
 *No other file references these — each is a way in, a helper used only inside its own file, or dead. The index cannot tell which:*
 

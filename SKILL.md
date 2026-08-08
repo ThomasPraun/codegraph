@@ -18,36 +18,42 @@ being worked on; omit `--root` when it is the current directory.
 
 ## Invoked with no task
 
-`/codegraph` on its own carries no question. Run this and show the output —
-do not stop at having built something:
+`/codegraph` on its own carries no question. Run this, show the output, and
+stop — the user picks what happens next:
 
 ```bash
-node scripts/query.mjs status --root <repo>
+node scripts/query.mjs --root <repo>
 ```
 
-It reports where the repo stands — index, drift, comments, doc files, twins —
-and ends with the commands that change whatever is not where it should be. It
-reads only: it never rebuilds the index, because that stays the owner's call
-here as everywhere else. Build the index first if there is none, then run it.
+It orients: what the tool answers, that questions are asked in words, and the
+actions available. **Do not run any of them unasked**, and do not build an
+index first — whether one exists is the first thing it says, and building
+without being asked is the thing this tool never does.
 
-Offer the `Next` lines; do not run them unasked. If the user names a task
-instead, skip this and go to the matching workflow below.
+If the user names a task instead, skip this and go to the matching workflow
+below.
 
 ## Invoked with a flag
 
 | Typed | Run | |
 |---|---|---|
-| `/codegraph` | `query.mjs status` | where the repo stands |
+| `/codegraph` | `query.mjs` | orientation and the options |
+| `/codegraph --status` | `query.mjs status` | where the repo stands |
 | `/codegraph --index` | `extract.mjs <repo>` | rebuild; the flag **is** the ask |
 | `/codegraph --gaps [dir]` | `query.mjs gaps [dir]` | exported, uncommented, most-used first |
 | `/codegraph --twins` | `twins.mjs` | duplicate candidates with no verdict |
 | `/codegraph --check` | `check.mjs` | the gate |
 | `/codegraph --docs` | `write-maps.mjs --write` | regenerate the generated blocks |
 | `/codegraph --reviewed` | `write-maps.mjs --reviewed` | record that the doc files were re-read |
-| `/codegraph --help` | — | print this table |
+| `/codegraph --help` | `query.mjs --help` | the orientation again |
 
 Say what you ran and show the output. `--index`, `--docs` and `--reviewed`
 write: name the files afterwards.
+
+`--status` is separate from the bare invocation on purpose. Someone arriving
+with no command has not asked how stale the index is — they do not yet know
+there is one. Counts answer a question they have not formed and bury the one
+thing that helps, which is what to type next.
 
 **There is deliberately no `--find`, `--ripples` or `--who`.** Those take a
 subject in prose, and prose is the better interface for them — "does something

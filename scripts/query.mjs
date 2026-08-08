@@ -2,14 +2,16 @@
 // The lens. Reads codegraph/index.json and answers one question at a time,
 // always against a cap.
 //
+//   node scripts/query.mjs                              orientation and options
 //   node scripts/query.mjs status                       where this repo stands
 //   node scripts/query.mjs find "formatear moneda" [--root .] [--limit 8]
 //   node scripts/query.mjs who formatearMoneda
 //   node scripts/query.mjs ripples src/utils/money.ts
 //   node scripts/query.mjs gaps [path]
 //
-// `status` is also what no command at all means: the bare invocation is the
-// one with no question attached, and it has to answer something.
+// No command at all is neither of those: it orients — what this answers, and
+// what can be asked of it. Counts live behind `status`, where someone went
+// looking for them.
 
 import {
   load, tryLoad, words, nameWords, overlap, coverage, capped, NOT_PROOF, stalenessLine, staleness, outDirFor,
@@ -37,11 +39,13 @@ const FLAGS_WITH_VALUE = new Set(['--root', '--limit'])
 
 // The only flags this command takes. Anything else is a command someone wrote
 // with dashes — `--gaps` — and without this list it falls through to the empty
-// case and silently answers with `status`, which looks like a working tool
-// answering the wrong question.
-const KNOWN_FLAGS = new Set(['root', 'limit'])
+// case and answers with orientation instead, exit 0. A working tool answering
+// a question nobody asked is worse than an error.
+const KNOWN_FLAGS = new Set(['root', 'limit', 'help'])
 
-const USAGE = 'usage: query.mjs <status|find|who|ripples|gaps> [subject] [--root .] [--limit N]'
+const USAGE =
+  'usage: query.mjs [status|find|who|ripples|gaps] [subject] [--root .] [--limit N]\n' +
+  '       no command orients and lists the options'
 
 function parseArgs(argv) {
   const flags = {}
@@ -317,6 +321,55 @@ export function status(root, byExt) {
   return out.join('\n')
 }
 
+// ------------------------------------------------------------------- orient
+
+/**
+ * What this is for and what can be asked of it. The answer to an invocation
+ * with nothing after it.
+ *
+ * Deliberately not `status`. Someone arriving with no command has not asked
+ * how stale the index is — they do not yet know the tool has an index. Reading
+ * counts at them answers a question they have not formed, and buries the one
+ * thing they need, which is what to type next. Numbers live behind `--status`,
+ * where somebody went looking for them.
+ *
+ * The one line of state that stays is whether an index exists at all, because
+ * every option below needs one and that changes which option comes first.
+ */
+export function orient(root) {
+  const g = tryLoad(root)
+  const plural = (n, one) => `${n} ${one}${n === 1 ? '' : 's'}`
+  const ready = g
+    ? `Index ready — ${plural(g.index.stats.symbols, 'symbol')} across ${plural(g.index.stats.files, 'file')}.`
+    : 'No index here yet. Nothing below can answer until one exists — start with --index.'
+
+  return [
+    'codegraph — does this already exist, and if I touch it, what starts lying?',
+    '',
+    `  ${ready}`,
+    '',
+    '  Ask in words. Questions are better asked than flagged, because the',
+    '  wording can be tried again and the results read:',
+    '',
+    '    "does something already validate a session token?"',
+    '    "what breaks if I change src/money.ts?"',
+    '    "who calls formatMoney?"',
+    '',
+    '  Or name an action:',
+    '',
+    '    --status        where this repo stands: drift, comments, doc files, twins',
+    '    --gaps [dir]    exported and uncommented, most-used first',
+    '    --twins         duplicate candidates nobody has ruled on',
+    '    --index         rebuild the index — never happens unasked',
+    '    --check         the gate: citations, budgets, freshness',
+    '    --docs          regenerate the generated blocks in the doc files',
+    '    --reviewed      record that the doc files were re-read against the code',
+    '',
+    '  Directly: query.mjs <status|find|who|ripples|gaps>, twins.mjs, check.mjs,',
+    '  write-maps.mjs, extract.mjs. The flags above are the skill spelling.',
+  ].join('\n')
+}
+
 // ---------------------------------------------------------------------- cli
 
 function main() {
@@ -340,9 +393,13 @@ function main() {
     process.exit(2)
   }
 
-  // Before `load`, which exits when there is no index. Having none is a state
-  // status exists to report, so it must never be a state status dies on.
-  if (!cmd || cmd === 'status') {
+  // Both are before `load`, which exits when there is no index. Having none is
+  // a state these two exist to report, so it must never be one they die on.
+  if (!cmd || flags.help) {
+    process.stdout.write(`${orient(root)}\n`)
+    return
+  }
+  if (cmd === 'status') {
     process.stdout.write(`${status(root, byExt)}\n`)
     return
   }
